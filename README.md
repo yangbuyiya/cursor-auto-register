@@ -1,4 +1,4 @@
-# Cursor 本地开发指南
+# Cursor Auto Register 本地开发指南
 
 本项目是建在巨人肩膀上的一个开源项目，不做收费，仅供学习参考。
 参考项目：
@@ -71,6 +71,10 @@ curl http://localhost:8000/health
 ## 可视化页面
 运行服务器后，访问：
 - UI: http://localhost:8000/
+
+  ![首页](./images/1.jpg)
+
+  ![使用](./images/2.jpg)
 
 ## API 文档
 运行服务器后，访问：
