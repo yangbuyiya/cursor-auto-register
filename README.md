@@ -48,7 +48,22 @@ ENABLE_UI=True
 # 最大注册账号数量
 MAX_ACCOUNTS=1
 ```
+### 参数特殊说明：
+
+- EMAIL_DOMAINS：自己申请的邮箱，并已将DNS解析到cloudflare上了
+
+- EMAIL_USERNAME： https://tempmail.plus/ 获取到的邮箱前缀，示例：ddcat
+
+  需要 cloudflare 上配置转发，可以参考：https://blog.csdn.net/qq_50082325/article/details/144530594 
+
+  把 Catch-all地址 都转发到 tempmail.plus 获取到的邮箱即可
+
+  ![3](./images/3.jpg)
+
+
+
 ### 3. 数据持久化：
+
 数据库文件会保存在 `accounts.db` 文件
 日志文件会保存在容器内的 `api.log`
 *注意事项：*
