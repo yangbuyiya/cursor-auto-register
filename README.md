@@ -2,8 +2,10 @@
 
 本项目是建在巨人肩膀上的一个开源项目，不做收费，仅供学习参考。
 参考项目：
-[chengazhen/cursor-auto-free](https://github.com/chengazhen/cursor-auto-free)
-[cursor-account-api](https://github.com/Elawen-Carl/cursor-account-api)
+
+- [chengazhen/cursor-auto-free](https://github.com/chengazhen/cursor-auto-free)：Cursor Pro 自动化工具
+
+- [cursor-account-api](https://github.com/Elawen-Carl/cursor-account-api)：Cursor Account API
 
 
 ## 环境要求
