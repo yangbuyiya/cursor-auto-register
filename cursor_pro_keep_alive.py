@@ -29,36 +29,49 @@ def handle_turnstile(tab):
     try:
         while True:
             try:
+                # 检查页面状态，但不直接返回，先检查是否有Turnstile验证需要处理
+                page_ready = False
                 if tab.ele("@name=password"):
-                    info("验证成功 - 已到达密码输入页面")
-                    break
-                if tab.ele("@data-index=0"):
-                    info("验证成功 - 已到达验证码输入页面")
-                    break
-                if tab.ele("Account Settings"):
-                    info("验证成功 - 已到达账户设置页面")
-                    break
+                    info("检测到密码输入页面，检查是否有验证需要处理...")
+                    page_ready = True
+                elif tab.ele("@data-index=0"):
+                    info("检测到验证码输入页面，检查是否有验证需要处理...")
+                    page_ready = True
+                elif tab.ele("Account Settings"):
+                    info("检测到账户设置页面，检查是否有验证需要处理...")
+                    page_ready = True
 
+                # 即使页面已经准备好，也检查是否有Turnstile验证需要处理
                 info("检测 Turnstile 验证...")
-                challengeCheck = (
-                    tab.ele("@id=cf-turnstile", timeout=2)
-                    .child()
-                    .shadow_root.ele("tag:iframe")
-                    .ele("tag:body")
-                    .sr("tag:input")
-                )
+                try:
+                    challengeCheck = (
+                        tab.ele("@id=cf-turnstile", timeout=2)
+                        .child()
+                        .shadow_root.ele("tag:iframe")
+                        .ele("tag:body")
+                        .sr("tag:input")
+                    )
 
-                if challengeCheck:
-                    info("检测到 Turnstile 验证，正在处理...")
-                    time.sleep(random.uniform(1, 3))
-                    challengeCheck.click()
-                    time.sleep(2)
-                    info("Turnstile 验证通过")
-                    return True
+                    if challengeCheck:
+                        info("检测到 Turnstile 验证，正在处理...")
+                        time.sleep(random.uniform(1, 3))
+                        challengeCheck.click()
+                        time.sleep(2)
+                        info("Turnstile 验证通过")
+                        return True
+                except:
+                    pass
+                
+                # 如果页面已准备好且没有验证需要处理，则可以返回
+                if page_ready:
+                    info("页面已准备好，没有检测到需要处理的验证")
+                    break
+
             except:
                 pass
 
             time.sleep(random.uniform(1, 2))
+        return True  # 返回True表示页面已准备好
     except Exception as e:
         info(f"Turnstile 验证失败: {str(e)}")
         return False
@@ -205,6 +218,17 @@ def sign_up_account(browser, tab, account_info):
                     i += 1
                 info("验证码输入完成")
                 time.sleep(random.uniform(3, 5))
+                
+                # 在验证码输入完成后检测是否出现了Turnstile验证
+                info("检查是否出现了Turnstile验证...")
+                try:
+                    turnstile_element = tab.ele("@id=cf-turnstile", timeout=3)
+                    if turnstile_element:
+                        info("检测到验证码输入后出现Turnstile验证，正在处理...")
+                        handle_turnstile(tab)
+                except:
+                    info("未检测到Turnstile验证，继续下一步")
+                
                 break
         except Exception as e:
             info(f"验证码处理失败: {str(e)}")
