@@ -126,11 +126,20 @@ async def run_registration():
             try:
                 count = await get_active_account_count()
                 info(f"当前数据库已激活账号数: {count}")
+                
                 if count >= MAX_ACCOUNTS:
-                    info(f"已达到最大账号数量 ({count}/{MAX_ACCOUNTS})")
-                    registration_status["last_status"] = "completed"
-                    registration_status["is_running"] = False
-                    break
+                    # 修改：不再结束任务，而是进入监控模式
+                    info(f"已达到最大账号数量 ({count}/{MAX_ACCOUNTS})，进入监控模式")
+                    registration_status["last_status"] = "monitoring"
+                    
+                    # 等待检测间隔时间
+                    next_check = datetime.now().timestamp() + REGISTRATION_INTERVAL
+                    registration_status["next_run"] = next_check
+                    info(f"将在 {REGISTRATION_INTERVAL} 秒后重新检查账号数量")
+                    await asyncio.sleep(REGISTRATION_INTERVAL)
+                    
+                    # 跳过当前循环的剩余部分，继续下一次循环检查
+                    continue
 
                 info(f"开始注册尝试 (当前账号数: {count}/{MAX_ACCOUNTS})")
                 registration_status["last_run"] = datetime.now().isoformat()
@@ -510,22 +519,24 @@ async def start_registration():
     try:
         # 检查是否已达到最大账号数
         count = await get_active_account_count()
-        if count >= MAX_ACCOUNTS:
-            info(f"拒绝注册请求 - 已达到最大账号数 ({count}/{MAX_ACCOUNTS})")
-            return {
-                "success": False,
-                "message": f"Already have maximum number of accounts ({MAX_ACCOUNTS})",
-            }
-
-        # 如果任务已在运行，返回相应消息
+        
+        # 检查任务是否已在运行
         if (
             background_tasks["registration_task"]
             and not background_tasks["registration_task"].done()
         ):
-            info("注册请求被忽略 - 任务已在运行")
+            # 确定当前状态
+            current_status = "monitoring" if registration_status["last_status"] == "monitoring" else "running"
+            
+            status_message = (
+                f"注册任务已在运行中 (状态: {current_status})" if current_status == "running"
+                else f"已达到最大账号数量({count}/{MAX_ACCOUNTS})，正在监控账号状态，当账号数量减少时将自动继续注册"
+            )
+            
+            info(f"注册请求被忽略 - 任务已在{current_status}状态")
             return {
                 "success": True,
-                "message": "Registration task is already running",
+                "message": status_message,
                 "status": {
                     "is_running": registration_status["is_running"],
                     "last_run": registration_status["last_run"],
@@ -537,6 +548,8 @@ async def start_registration():
                         else None
                     ),
                     "last_status": registration_status["last_status"],
+                    "current_count": count,
+                    "max_accounts": MAX_ACCOUNTS,
                 },
             }
 
@@ -594,9 +607,16 @@ async def start_registration():
                     detail=f"Failed to start registration task: {str(e)}",
                 )
 
+        # 检查是否已达到最大账号数，预先设置为监控模式
+        if count >= MAX_ACCOUNTS:
+            registration_status["last_status"] = "monitoring"
+            status_message = f"已达到最大账号数量({count}/{MAX_ACCOUNTS})，进入监控模式，当账号数量减少时将自动继续注册"
+        else:
+            status_message = "注册任务启动成功"
+
         return {
             "success": True,
-            "message": "Registration task started successfully",
+            "message": status_message,
             "status": {
                 "is_running": registration_status["is_running"],
                 "last_run": registration_status["last_run"],
@@ -604,6 +624,8 @@ async def start_registration():
                     registration_status["next_run"]
                 ).isoformat(),
                 "last_status": registration_status["last_status"],
+                "current_count": count,
+                "max_accounts": MAX_ACCOUNTS,
             },
         }
     except Exception as e:
@@ -653,20 +675,23 @@ async def get_registration_status():
     """获取注册状态"""
     try:
         count = await get_account_count()
-        task_status = (
-            "running"
-            if (
-                background_tasks["registration_task"]
-                and not background_tasks["registration_task"].done()
-            )
-            else "stopped"
-        )
+        active_count = await get_active_account_count()  # 添加获取活跃账号数
+        
+        # 更新任务状态逻辑
+        if background_tasks["registration_task"] and not background_tasks["registration_task"].done():
+            if registration_status["last_status"] == "monitoring":
+                task_status = "monitoring"  # 新增监控状态
+            else:
+                task_status = "running"
+        else:
+            task_status = "stopped"
 
         status_info = {
             "current_count": count,
+            "active_count": active_count,  # 添加活跃账号数
             "max_accounts": MAX_ACCOUNTS,
-            "is_registration_active": count < MAX_ACCOUNTS,
-            "remaining_slots": MAX_ACCOUNTS - count,
+            "is_registration_active": active_count < MAX_ACCOUNTS,
+            "remaining_slots": MAX_ACCOUNTS - active_count,
             "task_status": task_status,
             "registration_details": {
                 "is_running": registration_status["is_running"],
@@ -686,7 +711,15 @@ async def get_registration_status():
             },
         }
 
-        info(f"请求注册状态 (当前账号数: {count}, 状态: {task_status})")
+        # 添加状态解释信息
+        if task_status == "monitoring":
+            status_info["status_message"] = f"已达到最大账号数量({active_count}/{MAX_ACCOUNTS})，正在监控账号状态，当账号数量减少时将自动继续注册"
+        elif task_status == "running":
+            status_info["status_message"] = f"正在执行注册流程，当前账号数：{active_count}/{MAX_ACCOUNTS}"
+        else:
+            status_info["status_message"] = "注册任务未运行"
+
+        info(f"请求注册状态 (当前账号数: {count}, 活跃账号数: {active_count}, 状态: {task_status})")
         return status_info
 
     except Exception as e:
