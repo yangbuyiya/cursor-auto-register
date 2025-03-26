@@ -47,6 +47,9 @@ API_PORT=8000
 ENABLE_UI=True
 # 最大注册账号数量
 MAX_ACCOUNTS=1
+
+# windows用户部分安装时是自定义目录安装的，需要修改该配置
+#CURSOR_PATH="D:\devtools\cursor"
 ```
 ### 参数特殊说明：
 
