@@ -922,12 +922,14 @@ async def use_account_token(id: int):
             auth_manager = CursorAuthManager()
             success = auth_manager.update_auth(email=account.email, access_token=account.token, refresh_token=account.token)
             # 重置Cursor的机器ID
-            from reset_machine import MachineIDResetter
-            resetter = MachineIDResetter()
-            resetter.reset_machine_ids()
+            from cursor_shadow_patcher import CursorShadowPatcher
+            resetter = CursorShadowPatcher()
+            patch_success = resetter.reset_machine_ids()
             
-            if success:
-                return {"success": True, "message": f"成功使用账号 {account.email} 的Token"}
+            if success and patch_success:
+                return {"success": True, "message": f"成功使用账号 {account.email} 的Token并重置了机器ID"}
+            elif success:
+                return {"success": True, "message": f"成功使用账号 {account.email} 的Token，但机器ID重置失败"}
             else:
                 return {"success": False, "message": "Token更新失败"}
                 
