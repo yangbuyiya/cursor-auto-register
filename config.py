@@ -66,3 +66,7 @@ EMAIL_VERIFICATION_WAIT = int(os.getenv("EMAIL_VERIFICATION_WAIT", 5))
 # ===== 数据库配置 =====
 # 数据库连接URL，默认使用SQLite
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:////app/accounts.db") 
+
+# ===== Cursor main.js 配置 =====
+# Cursor 主文件路径
+CURSOR_PATH = os.getenv("CURSOR_PATH", None)

@@ -163,7 +163,7 @@ def sign_up_account(browser, tab, account_info):
 
     handle_turnstile(tab)
 
-    if tab.ele("Can't verify the user is human. Please try again.") or tab.ele(
+    if tab.ele("verify the user is human. Please try again.") or tab.ele(
         "Can't verify the user is human. Please try again."
     ):
         info("检测到turnstile验证失败，正在重试...")
@@ -286,13 +286,13 @@ class EmailGenerator:
         )
         return first_letter + rest_letters
         
-    def generate_email(self, length=6):
+    def generate_email(self, length=8):
         """生成随机邮箱地址，使用随机域名"""
-        random_str = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=length))
+        random_str = "".join(random.choices("abcdefghijklmnopqrstuvwxyz1234567890", k=length))
         timestamp = str(int(time.time()))[-4:]  # 使用时间戳后4位
         # 随机选择一个域名
         domain = random.choice(self.domains)
-        return f"{random_str}{timestamp}@{domain}"
+        return f"{random_str}@{domain}"
 
     def get_account_info(self):
         """获取账号信息，确保每次调用都生成新的邮箱和密码"""

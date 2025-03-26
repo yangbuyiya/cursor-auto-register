@@ -6,6 +6,12 @@ import pathlib
 import platform
 from uuid import uuid4
 import sys
+from logger import info, warning, error
+
+from config import (
+    CURSOR_PATH
+)
+
 
 # 颜色常量定义，保留用于日志输出
 GREEN = "\033[92m"
@@ -71,21 +77,34 @@ def replace(data: bytes, pattern: str, replace_str: str, probe: str = None) -> b
 
 def find_main_js():
     """查找Cursor的main.js文件"""
+    error(f'SYSTEM: {SYSTEM}')
     if SYSTEM == "Windows":
         localappdata = os.getenv("LOCALAPPDATA")
         if not localappdata:
             raise OSError("环境变量 %LOCALAPPDATA% 不存在")
-        
+
+        # 使用本地变量保存路径
+        cursor_path = CURSOR_PATH
+        if not cursor_path:
+            error(f'当前windows系统, 环境变量 CURSOR_PATH 不存在，使用默认路径')
+            cursor_path = os.getenv("LOCALAPPDATA", "")
+        else:
+            info(f'当前windows系统, CURSOR_PATH: {cursor_path}')
+
         # 常见的Cursor安装路径
         paths = [
+            path(os.path.join(cursor_path, "resources", "app", "out", "main.js")),
             path(os.path.join(localappdata, "Programs", "cursor", "resources", "app", "out", "main.js")),
             path(os.path.join(localappdata, "cursor", "resources", "app", "out", "main.js")),
-            path(os.path.join(os.getenv("APPDATA", ""), "cursor", "resources", "app", "out", "main.js"))
         ]
         
         for p in paths:
+            info(f"检查路径: {p}")
             if p.exists():
+                info(f"找到main.js: {p}")
                 return p
+            else:
+                warning(f"路径不存在: {p}")
                 
     elif SYSTEM == "Darwin":  # macOS
         paths = [
