@@ -186,6 +186,7 @@ def sign_up_account(browser, tab, account_info):
     i = 0
     while i < 5:
         try:
+            time.sleep(random.uniform(0.2, 1))
             if tab.ele("Account Settings"):
                 info("注册成功，已进入账号设置页面")
                 break
@@ -193,6 +194,9 @@ def sign_up_account(browser, tab, account_info):
                 info("等待输入验证码...")
                 # 切换到邮箱标签页
                 code = email_handler.get_verification_code(source_email=account_info["email"])
+                if code is None:
+                    info("未获取到验证码...系统异常，正在退出....")
+                    return "EMAIL_GET_CODE_FAILED"
                 info(f"输入验证码: {code}")
                 i = 0
                 for digit in code:
@@ -384,7 +388,7 @@ def main():
                     else:
                         info("获取Cursor会话Token失败")
                         current_retry += 1
-                elif result in ["EMAIL_USED", "SIGNUP_RESTRICTED", "VERIFY_FAILED"]:
+                elif result in ["EMAIL_USED", "SIGNUP_RESTRICTED", "VERIFY_FAILED", "EMAIL_GET_CODE_FAILED"]:
                     info(f"遇到问题: {result}，尝试切换邮箱...")
                     continue  # 使用新邮箱重试注册
                 else:  # ERROR
