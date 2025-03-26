@@ -20,6 +20,29 @@ class BrowserManager:
     def _get_browser_options(self):
         """获取浏览器配置"""
         co = ChromiumOptions()
+        
+        # 设置浏览器路径 - 添加这段代码
+        browser_path = os.getenv("BROWSER_PATH")
+        if not browser_path and sys.platform == "win32":
+            # 仅在Windows系统下尝试常见的浏览器路径
+            possible_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    browser_path = path
+                    info(f"自动找到浏览器路径: {browser_path}")
+                    break
+            
+            if not browser_path:
+                info("未找到浏览器路径，请在.env文件中设置BROWSER_PATH环境变量")
+        
+        if browser_path:
+            co.set_browser_path(browser_path)
+            
         try:
             extension_path = self._get_extension_path()
             co.add_extension(extension_path)
