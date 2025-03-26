@@ -622,6 +622,9 @@
                                 </button>
                             </div>
                         </div>
+                        <div class="mb-3">
+                            <p class="text-muted" id="status-message">任务未启动</p>
+                        </div>
                         <div id="task-details">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -884,21 +887,32 @@
             // 数据格式兼容性处理
             const taskStatus = data || {};
             
-            // 从正确的嵌套位置获取运行状态
-            const isRunning = taskStatus.task_status === 'running';
+            // 从正确的嵌套位置获取运行状态和任务状态
+            const isRunning = taskStatus.task_status === 'running' || taskStatus.task_status === 'monitoring';
+            const taskStatusValue = taskStatus.task_status;
             
-            // 更新状态指示器
+            // 更新状态指示器，添加监控模式的样式
             if ($('#registration-status').length) {
-                $('#registration-status').removeClass().addClass(
-                    isRunning ? 'bg-success' : 'bg-secondary'
-                );
+                $('#registration-status').removeClass().addClass('badge');
+                
+                if (taskStatusValue === 'running') {
+                    $('#registration-status').addClass('bg-success');
+                } else if (taskStatusValue === 'monitoring') {
+                    $('#registration-status').addClass('bg-info');
+                } else {
+                    $('#registration-status').addClass('bg-secondary');
+                }
             }
             
-            // 更新状态文本
+            // 更新状态文本，添加监控模式文本
             if ($('#registration-status').length) {
-                $('#registration-status').text(
-                    isRunning ? '正在运行' : '已停止'
-                );
+                let statusText = '已停止';
+                if (taskStatusValue === 'running') {
+                    statusText = '正在运行';
+                } else if (taskStatusValue === 'monitoring') {
+                    statusText = '监控模式';
+                }
+                $('#registration-status').text(statusText);
             }
             
             // 更新其他状态信息
@@ -915,7 +929,7 @@
                 $('#next-run').text(new Date(taskStatus.registration_details.next_run * 1000).toLocaleString());
             }
             
-            // 更新按钮状态
+            // 更新按钮状态 - 监控模式下也禁用启动按钮
             if ($('#start-registration').length && $('#stop-registration').length) {
                 if (isRunning) {
                     $('#start-registration').addClass('disabled').prop('disabled', true);
@@ -951,14 +965,32 @@
             }
             
             if ($('#current-count').length) {
-                $('#current-count').text(taskStatus.current_count || 0);
+                $('#current-count').text(taskStatus.active_count || taskStatus.current_count || 0);
             }
             
             if ($('#max-accounts').length) {
                 $('#max-accounts').text(taskStatus.max_accounts || 0);
             }
             
-            
+            // 添加状态消息显示
+            if ($('#status-message').length) {
+                if (taskStatus.status_message) {
+                    $('#status-message').text(taskStatus.status_message);
+                } else {
+                    // 根据任务状态设置默认消息
+                    let defaultMessage = '任务未启动';
+                    if (taskStatusValue === 'running') {
+                        defaultMessage = '正在注册新账号...';
+                    } else if (taskStatusValue === 'monitoring') {
+                        defaultMessage = '已达到最大账号数量，正在监控账号数量变化...';
+                    } else if (taskStatus.registration_details?.last_status === 'completed') {
+                        defaultMessage = '任务已完成';
+                    } else if (taskStatus.registration_details?.last_status === 'error') {
+                        defaultMessage = '任务执行出错，请检查日志';
+                    }
+                    $('#status-message').text(defaultMessage);
+                }
+            }
         }
 
         // 渲染账号表格
@@ -1115,49 +1147,6 @@
             }
             currentPage = 1;
             renderAccountsTable();
-        }
-
-        // 更新注册状态
-        function updateRegistrationStatus(data) {
-            const registrationDetails = data.registration_details;
-            const isRunning = registrationDetails.is_running;
-            const lastStatus = registrationDetails.last_status;
-            
-            let statusText = '未启动';
-            let statusClass = 'status-not-started';
-            
-            if (isRunning) {
-                statusText = '运行中';
-                statusClass = 'status-running';
-            } else if (lastStatus === 'completed') {
-                statusText = '已完成';
-                statusClass = 'status-completed';
-            } else if (lastStatus === 'error' || lastStatus === 'failed') {
-                statusText = '失败';
-                statusClass = 'status-failed';
-            } else if (lastStatus === 'manually stopped') {
-                statusText = '已停止';
-                statusClass = 'status-not-started';
-            }
-            
-            $("#registration-status").text(statusText).removeClass().addClass(`badge ${statusClass}`);
-            
-            // 更新按钮状态
-            if (isRunning) {
-                $("#start-registration").prop("disabled", true);
-                $("#stop-registration").prop("disabled", false);
-            } else {
-                $("#start-registration").prop("disabled", false);
-                $("#stop-registration").prop("disabled", true);
-            }
-            
-            // 更新任务详情
-            $("#last-run").text(formatDateTime(registrationDetails.last_run) || '-');
-            $("#next-run").text(formatDateTime(registrationDetails.next_run) || '-');
-            $("#total-runs").text(registrationDetails.statistics.total_runs || 0);
-            $("#successful-runs").text(registrationDetails.statistics.successful_runs || 0);
-            $("#failed-runs").text(registrationDetails.statistics.failed_runs || 0);
-            $("#success-rate").text(registrationDetails.statistics.success_rate || '-');
         }
 
         // 获取账号用量详情并更新数据库
