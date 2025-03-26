@@ -26,14 +26,13 @@ class EmailVerificationHandler:
         """
         max_retries = max_retries or EMAIL_VERIFICATION_RETRIES
         wait_time = wait_time or EMAIL_VERIFICATION_WAIT
-        
+        info(f'开始获取邮箱验证码=>最大重试次数:{max_retries}, 等待时间:{wait_time}')
         for attempt in range(max_retries):
             try:
                 code, mail_id = self._get_latest_mail_code(source_email)
                 if code:
                     info(f"成功获取验证码: {code}")
                     return code
-                
                 if attempt < max_retries - 1:
                     info(f"未找到验证码，{wait_time}秒后重试 ({attempt+1}/{max_retries})...")
                     time.sleep(wait_time)
@@ -50,10 +49,20 @@ class EmailVerificationHandler:
         info(f"开始获取邮件列表")
         # 获取邮件列表
         mail_list_url = f"https://tempmail.plus/api/mails?email={self.username}{self.emailExtension}&limit=20&epin={self.pin}"
-        mail_list_response = self.session.get(mail_list_url)
-        mail_list_data = mail_list_response.json()
-        time.sleep(0.5)
-        if not mail_list_data.get("result"):
+        try:
+            mail_list_response = self.session.get(mail_list_url, timeout=10)  # 添加超时参数
+            mail_list_data = mail_list_response.json()
+            time.sleep(0.5)
+            if not mail_list_data.get("result"):
+                return None, None
+        except requests.exceptions.Timeout:
+            error(f"获取邮件列表超时")
+            return None, None
+        except requests.exceptions.ConnectionError:
+            error(f"获取邮件列表连接错误")
+            return None, None
+        except Exception as e:
+            error(f"获取邮件列表发生错误: {str(e)}")
             return None, None
 
         # 获取最新邮件的ID
@@ -63,10 +72,20 @@ class EmailVerificationHandler:
         info(f"开始获取邮件详情: {first_id}")
         # 获取具体邮件内容
         mail_detail_url = f"https://tempmail.plus/api/mails/{first_id}?email={self.username}{self.emailExtension}&epin={self.pin}"
-        mail_detail_response = self.session.get(mail_detail_url)
-        mail_detail_data = mail_detail_response.json()
-        time.sleep(0.5)
-        if not mail_detail_data.get("result"):
+        try:
+            mail_detail_response = self.session.get(mail_detail_url, timeout=10)  # 添加超时参数
+            mail_detail_data = mail_detail_response.json()
+            time.sleep(0.5)
+            if not mail_detail_data.get("result"):
+                return None, None
+        except requests.exceptions.Timeout:
+            error(f"获取邮件详情超时")
+            return None, None
+        except requests.exceptions.ConnectionError:
+            error(f"获取邮件详情连接错误")
+            return None, None
+        except Exception as e:
+            error(f"获取邮件详情发生错误: {str(e)}")
             return None, None
 
         # 从邮件文本中提取6位数字验证码
