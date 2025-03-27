@@ -81,6 +81,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 使用startup事件初始化数据库
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
+    info("数据库已初始化")
+
 
 class Account(BaseModel):
     email: str
