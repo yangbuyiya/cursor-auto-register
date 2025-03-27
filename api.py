@@ -378,8 +378,8 @@ async def get_accounts(status: Optional[str] = None):
             result = await session.execute(query)
             accounts = result.scalars().all()
 
-            if not accounts:
-                raise HTTPException(status_code=404, detail="没有找到符合条件的账号")
+            # if not accounts:
+            #     raise HTTPException(status_code=404, detail="没有找到符合条件的账号")
             return accounts
     except Exception as e:
         error(f"获取账号失败: {str(e)}")
