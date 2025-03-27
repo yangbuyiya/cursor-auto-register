@@ -23,6 +23,7 @@ import concurrent.futures
 from functools import lru_cache
 from config import MAX_ACCOUNTS, REGISTRATION_INTERVAL, API_HOST, API_PORT, API_DEBUG, API_WORKERS
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 
 # 全局状态追踪
 registration_status = {
@@ -970,6 +971,109 @@ async def use_account_token(id: int):
         error(f"使用账号Token失败: {str(e)}")
         error(traceback.format_exc())
         return {"success": False, "message": f"使用Token失败: {str(e)}"}
+
+# 添加配置相关模型
+class ConfigModel(BaseModel):
+    BROWSER_HEADLESS: bool
+    BROWSER_USER_AGENT: str
+    MAX_ACCOUNTS: int
+    EMAIL_DOMAINS: str
+    EMAIL_USERNAME: str
+    EMAIL_PIN: str
+    BROWSER_PATH: Optional[str] = None
+    CURSOR_PATH: Optional[str] = None
+
+# 获取配置端点
+@app.get("/config", tags=["Config"])
+async def get_config():
+    """获取当前系统配置"""
+    try:
+        # 重新加载配置以确保获取最新值
+        load_dotenv()
+        
+        config = {
+            "BROWSER_HEADLESS": os.getenv("BROWSER_HEADLESS", "True").lower() == "true",
+            "BROWSER_USER_AGENT": os.getenv("BROWSER_USER_AGENT", ""),
+            "MAX_ACCOUNTS": int(os.getenv("MAX_ACCOUNTS", "10")),
+            "EMAIL_DOMAINS": os.getenv("EMAIL_DOMAINS", ""),
+            "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME", ""),
+            "EMAIL_PIN": os.getenv("EMAIL_PIN", ""),
+            "BROWSER_PATH": os.getenv("BROWSER_PATH", ""),
+            "CURSOR_PATH": os.getenv("CURSOR_PATH", "")
+        }
+        
+        return {"success": True, "data": config}
+    except Exception as e:
+        error(f"获取配置失败: {str(e)}")
+        error(traceback.format_exc())
+        return {"success": False, "message": f"获取配置失败: {str(e)}"}
+
+# 更新配置端点
+@app.put("/config", tags=["Config"])
+async def update_config(config: ConfigModel):
+    """更新系统配置"""
+    try:
+        # 获取.env文件路径
+        env_path = Path(__file__).parent / ".env"
+        
+        # 读取当前.env文件内容
+        current_lines = []
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                current_lines = f.readlines()
+        
+        # 构建配置字典
+        config_dict = {
+            "BROWSER_HEADLESS": str(config.BROWSER_HEADLESS),
+            "BROWSER_USER_AGENT": config.BROWSER_USER_AGENT,
+            "MAX_ACCOUNTS": str(config.MAX_ACCOUNTS),
+            "EMAIL_DOMAINS": config.EMAIL_DOMAINS,
+            "EMAIL_USERNAME": config.EMAIL_USERNAME,
+            "EMAIL_PIN": config.EMAIL_PIN
+        }
+        
+        # 添加可选配置（如果提供）
+        if config.BROWSER_PATH:
+            config_dict["BROWSER_PATH"] = config.BROWSER_PATH
+        if config.CURSOR_PATH:
+            config_dict["CURSOR_PATH"] = config.CURSOR_PATH
+        
+        # 处理现有行或创建新行
+        updated_lines = []
+        updated_keys = set()
+        
+        for line in current_lines:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                updated_lines.append(line)
+                continue
+                
+            key, value = line.split("=", 1) if "=" in line else (line, "")
+            key = key.strip()
+            
+            if key in config_dict:
+                updated_lines.append(f"{key}={config_dict[key]}")
+                updated_keys.add(key)
+            else:
+                updated_lines.append(line)
+        
+        # 添加未更新的配置项
+        for key, value in config_dict.items():
+            if key not in updated_keys and value:
+                updated_lines.append(f"{key}={value}")
+        
+        # 写入更新后的配置
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(updated_lines))
+        
+        # 重新加载环境变量
+        load_dotenv(override=True)
+        
+        return {"success": True, "message": "配置已更新"}
+    except Exception as e:
+        error(f"更新配置失败: {str(e)}")
+        error(traceback.format_exc())
+        return {"success": False, "message": f"更新配置失败: {str(e)}"}
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -601,6 +601,78 @@
 
     <div class="container py-4">
         <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">系统配置</h5>
+                            <button id="edit-config-btn" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit me-1"></i> 编辑配置
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form id="config-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="browser-headless" class="form-label">浏览器无头模式</label>
+                                        <select id="browser-headless" class="form-control" disabled>
+                                            <option value="true">是 (无界面)</option>
+                                            <option value="false">否 (有界面)</option>
+                                        </select>
+                                        <small class="text-muted">True=无界面运行浏览器，False=显示浏览器界面</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="email-domains" class="form-label">邮箱域名</label>
+                                        <input type="text" id="email-domains" class="form-control" disabled>
+                                        <small class="text-muted">用于注册的邮箱域名，多个域名用逗号分隔</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="browser-useragent" class="form-label">浏览器User-Agent</label>
+                                        <input type="text" id="browser-useragent" class="form-control" disabled>
+                                        <small class="text-muted">浏览器模拟的用户代理字符串</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="max-accounts" class="form-label">最大激活账号数量</label>
+                                        <input type="number" id="max-accounts" class="form-control" min="1" disabled>
+                                        <small class="text-muted">系统允许创建的最大账号数量</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="email-username" class="form-label">临时邮箱用户名（只用用户名，示例：ddcat28，访问：https://tempmail.plus/ 获取）</label>
+                                        <input type="text" id="email-username" class="form-control" disabled>
+                                        <small class="text-muted">用于接收验证码的临时邮箱用户名</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="email-pin" class="form-label">临时邮箱PIN</label>
+                                        <input type="text" id="email-pin" class="form-control" disabled>
+                                        <small class="text-muted">临时邮箱PIN码（如果需要）</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="browser-path" class="form-label">浏览器路径 (可选，windows下自定义浏览器安装目录时需修改该配置)</label>
+                                        <input type="text" id="browser-path" class="form-control" disabled>
+                                        <small class="text-muted">Windows下浏览器可执行文件的完整路径</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cursor-path" class="form-label">Cursor路径 (可选，windows下自定义cursor安装目录时需修改该配置)</label>
+                                        <input type="text" id="cursor-path" class="form-control" disabled>
+                                        <small class="text-muted">Cursor安装目录的完整路径</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" id="cancel-config-btn" class="btn btn-secondary me-2" style="display:none">取消</button>
+                                <button type="submit" id="save-config-btn" class="btn btn-success" style="display:none">保存配置</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
             <!-- 将左侧任务控制卡片调整为全宽 -->
             <div class="col-12">
                 <div class="card h-100">
@@ -752,6 +824,9 @@
         
         // 应用初始化函数 - 提高代码组织性
         function initializeApplication() {
+            // 加载配置
+            loadConfig();
+            
             // 初始加载数据
             loadAllData();
             
@@ -789,6 +864,21 @@
             });
             
             // 可以添加更多事件绑定...
+
+            // 在bindEventHandlers函数中添加配置相关事件
+            $("#edit-config-btn").click(function() {
+                enableConfigForm(true);
+            });
+
+            $("#cancel-config-btn").click(function() {
+                enableConfigForm(false);
+                loadConfig(); // 重新加载配置
+            });
+
+            $("#config-form").submit(function(e) {
+                e.preventDefault();
+                saveConfig();
+            });
         }
 
         // 全局变量
@@ -1726,6 +1816,86 @@
                     </button>
                 </td>
             `;
+        }
+
+        // 加载配置函数
+        function loadConfig() {
+            showLoading();
+            fetch('/config')
+                .then(res => res.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        const config = data.data;
+                        $("#browser-headless").val(config.BROWSER_HEADLESS.toString());
+                        $("#browser-useragent").val(config.BROWSER_USER_AGENT);
+                        $("#max-accounts").val(config.MAX_ACCOUNTS);
+                        $("#email-domains").val(config.EMAIL_DOMAINS);
+                        $("#email-username").val(config.EMAIL_USERNAME);
+                        $("#email-pin").val(config.EMAIL_PIN);
+                        $("#browser-path").val(config.BROWSER_PATH || '');
+                        $("#cursor-path").val(config.CURSOR_PATH || '');
+                    } else {
+                        showAlert(`加载配置失败: ${data.message || '未知错误'}`, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('加载配置时发生错误:', error);
+                    hideLoading();
+                    showAlert('加载配置失败，请稍后重试', 'danger');
+                });
+        }
+
+        // 保存配置函数
+        function saveConfig() {
+            showLoading();
+            const config = {
+                BROWSER_HEADLESS: $("#browser-headless").val() === 'true',
+                BROWSER_USER_AGENT: $("#browser-useragent").val(),
+                MAX_ACCOUNTS: parseInt($("#max-accounts").val()),
+                EMAIL_DOMAINS: $("#email-domains").val(),
+                EMAIL_USERNAME: $("#email-username").val(),
+                EMAIL_PIN: $("#email-pin").val(),
+                BROWSER_PATH: $("#browser-path").val(),
+                CURSOR_PATH: $("#cursor-path").val()
+            };
+            
+            fetch('/config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+            .then(res => res.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    showAlert('配置已成功保存', 'success');
+                    enableConfigForm(false); // 禁用编辑状态
+                } else {
+                    showAlert(`保存配置失败: ${data.message || '未知错误'}`, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('保存配置时发生错误:', error);
+                hideLoading();
+                showAlert('保存配置失败，请稍后重试', 'danger');
+            });
+        }
+
+        // 启用/禁用配置表单
+        function enableConfigForm(enable) {
+            const inputs = $('#config-form select, #config-form input');
+            if (enable) {
+                inputs.prop('disabled', false);
+                $('#save-config-btn, #cancel-config-btn').show();
+                $('#edit-config-btn').hide();
+            } else {
+                inputs.prop('disabled', true);
+                $('#save-config-btn, #cancel-config-btn').hide();
+                $('#edit-config-btn').show();
+            }
         }
     </script>
 
