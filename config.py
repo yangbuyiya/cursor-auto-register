@@ -56,14 +56,14 @@ SETTINGS_URL = "https://www.cursor.com/settings"
 
 # ===== 邮箱配置 =====
 # 临时邮箱用户名
-EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "ddcat666")
+EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "xxx")
 # 临时邮箱域名
 EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "mailto.plus")
 # 临时邮箱PIN码（如果需要）
 EMAIL_PIN = os.getenv("EMAIL_PIN", "")
 # 可用于注册的邮箱域名列表（逗号分隔）
 EMAIL_DOMAINS = [
-    domain.strip() for domain in os.getenv("EMAIL_DOMAINS", "ddcat.store").split(",")
+    domain.strip() for domain in os.getenv("EMAIL_DOMAINS", "xxx.xx").split(",")
 ]
 # 邮件验证码获取最大重试次数
 EMAIL_VERIFICATION_RETRIES = int(os.getenv("EMAIL_VERIFICATION_RETRIES", 5))
