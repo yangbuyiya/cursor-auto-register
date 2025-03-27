@@ -92,6 +92,8 @@ curl http://localhost:8000/health
 
   ![首页](./images/1.jpg)
 
+  ![配置](./images/4.jpg)
+
   ![使用](./images/2.jpg)
 
 ## API 文档
