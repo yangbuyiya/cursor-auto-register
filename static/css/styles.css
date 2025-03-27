@@ -1,0 +1,780 @@
+body {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #212529;
+    min-height: 100vh;
+}
+
+/* 组合相似的选择器，减少重复 */
+.card, .table, .alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.card {
+    border: none;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    font-weight: 600;
+    color: #111827;
+}
+
+/* 优化按钮相关样式 */
+.btn {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* 优化按钮波纹效果 */
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1) translate(-50%, -50%);
+    transform-origin: 0 0;
+}
+
+.btn:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+    0% { transform: scale(0); opacity: 0.6; }
+    100% { transform: scale(25); opacity: 0; }
+}
+
+/* 优化表格样式 */
+.table {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.table td, .table th {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+/* 简化表格悬停效果 */
+.table tbody tr:hover {
+    background-color: rgba(241, 245, 249, 0.7);
+    transform: scale(1.01);
+}
+
+/* 合并加载遮罩样式 */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.loading-overlay.show {
+    display: flex;
+    pointer-events: auto;
+}
+
+.spinner-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(120deg, #4f46e5, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.6em;
+    border-radius: 4px;
+}
+
+.operation-column .btn {
+    margin: 0.15rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.email-column {
+    max-width: 250px;
+    word-break: break-all;
+}
+
+.password-cell, .token-cell {
+    position: relative;
+}
+
+.copy-btn {
+    margin-left: 0.25rem !important;
+}
+
+.container {
+    max-width: 1400px;
+    padding: 1.5rem;
+}
+
+.table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+    color: #111827;
+    border-top: none;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+#fireworks-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+}
+
+#alert-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 400px;
+}
+
+.alert {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    border-left-color: #10b981;
+}
+
+.alert-danger {
+    border-left-color: #ef4444;
+}
+
+.special-alert {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    font-weight: 500;
+    transform-origin: center;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* 调整卡片内部间距，使内容更紧凑 */
+.card-body {
+    padding: 1.25rem;
+}
+
+/* 调整统计图表容器高度 */
+#usage-chart-container {
+    height: 200px;  /* 从250px减小到200px */
+}
+
+/* 调整任务控制详情部分 */
+#task-details .card {
+    margin-bottom: 0.5rem;  /* 减小底部边距 */
+}
+
+#task-details .card .card-body {
+    padding: 0.5rem;  /* 减小内部填充 */
+}
+
+/* 调整操作按钮大小和间距 */
+.task-control-buttons .btn {
+    padding: 0.375rem 0.75rem;
+}
+
+/* 调整任务状态信息间距 */
+.task-status-info {
+    margin-bottom: 0.75rem;
+}
+
+/* 调整图表大小 */
+#usage-chart {
+    max-height: 160px;  /* 从200px减小到160px */
+}
+
+/* 使用情况进度条样式更新 */
+.usage-progress-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+/* 使用情况列样式优化 */
+.usage-info {
+    min-width: 140px;
+}
+
+.usage-numbers {
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+    white-space: nowrap;
+}
+
+.used-count {
+    font-weight: 500;
+    color: #333;
+}
+
+.total-count {
+    color: #666;
+}
+
+.remaining-count {
+    font-size: 0.75rem;
+    color: #28a745;
+    margin-left: 4px;
+}
+
+/* 修改进度条背景为灰色 */
+.usage-progress {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* 修改进度条填充颜色为浅红色 */
+.usage-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8a8a, #ffb3b3);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* 调整表格列宽 */
+.usage-column {
+    min-width: 180px;
+}
+
+.email-column {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 高亮显示当前行 */
+.table tbody tr.active {
+    background-color: rgba(79, 70, 229, 0.05);
+}
+
+/* 调整使用量查询按钮 */
+.get-usage-btn {
+    white-space: nowrap;
+}
+
+/* 保留操作列样式，但可以调整 */
+.operation-column {
+    min-width: 120px; /* 由于按钮组，宽度需要调整 */
+    white-space: nowrap;
+}
+
+/* 标题和面板间距优化 */
+h2, h3, h4, h5 {
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+/* 添加鼠标悬停手形光标效果 */
+.copy-btn, 
+.toggle-password, 
+.toggle-token, 
+.toggle-username,
+.btn,
+.status-action,
+.get-usage-btn,
+.delete-account-btn {
+    cursor: pointer;
+}
+
+/* 为复制和显示/隐藏图标添加悬停效果 */
+.copy-btn:hover, 
+.toggle-password:hover, 
+.toggle-token:hover, 
+.toggle-username:hover {
+    color: #4f46e5;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+/* 添加额度进度条样式 */
+.battery-progress {
+    display: flex;
+    width: 100%;
+    height: 20px;
+    /* background-color: #e9ecef; */
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    /* border: 1px solid #dee2e6; */
+}
+
+/* 电池内部格子线 */
+.battery-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    pointer-events: none;
+}
+
+/* 电池格子 */
+.battery-cell {
+    flex: 1;
+    height: 2px;
+    border-right: 1px solid rgba(0,0,0,0.1);
+}
+
+.battery-cell:last-child {
+    border-right: none;
+}
+
+/* 已使用的部分 - 浅红色 */
+.battery-used {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8a8a, #ffb3b3);
+    transition: width 0.5s ease;
+}
+
+/* 额度信息文本 */
+.usage-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #495057;
+    text-shadow: 0 0 2px rgba(255,255,255,0.7);
+    white-space: nowrap;
+}
+
+/* 使用量显示样式 */
+.usage-display {
+    width: 100%;
+}
+
+.usage-text {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.progress {
+    height: 8px !important;
+    border-radius: 4px;
+    background-color: transparent !important;
+    overflow: hidden;
+}
+
+/* 自定义颜色 */
+.bg-danger-soft {
+    background-color: #ffcccc !important;
+}
+
+.bg-success-soft {
+    background-color: #d1ffd1 !important;
+}
+
+/* 新的额度显示样式 - 参考图片精确复刻 */
+.usage-bar-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px 0;
+}
+
+.usage-bar {
+    flex-grow: 1;
+    height: 15px;
+    background-color: #e8f7e8; /* 浅绿背景 */
+    border-radius: 10px;
+    margin-right: 15px;
+    position: relative;
+    overflow: hidden;
+}
+
+.usage-bar-used {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background-color: #ffcccc; /* 浅红色 */
+    border-radius: 10px 0 0 10px;
+}
+
+.usage-percent {
+    font-size: 14px;
+    color: #666;
+    font-weight: normal;
+    white-space: nowrap;
+    min-width: 55px;
+    text-align: right;
+}
+
+/* 使用情况列样式 */
+.usage-info {
+    white-space: nowrap;
+}
+
+.usage-numbers {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 5px;
+}
+
+.used-count {
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.separator {
+    color: #6c757d;
+}
+
+.total-count {
+    font-weight: 600;
+    color: #212529;
+}
+
+.remaining-count {
+    color: #28a745;
+    font-size: 0.85em;
+    margin-left: 5px;
+}
+
+/* 电池式进度指示器 - 修改颜色逻辑 */
+.battery-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.battery-bars {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    position: relative;
+    padding: 0 2px;
+}
+
+.battery-bars::before {
+    content: '';
+    position: absolute;
+    left: -3px;
+    height: 8px;
+    width: 3px;
+    background-color: #adb5bd;
+    border-radius: 2px 0 0 2px;
+}
+
+.battery-bar {
+    width: 6px;
+    height: 14px;
+    background-color: rgba(40, 167, 69, 0.2); /* 默认未使用为浅绿色 */
+    display: inline-block;
+    border-radius: 1px;
+    transition: background-color 0.3s ease;
+}
+
+/* 根据进度点亮电池条 - 反转逻辑，显示已用部分 */
+.battery-progress[data-percent="0"] .battery-bar:nth-child(n) {
+    background-color: rgba(40, 167, 69, 0.2); /* 全未用 - 全部浅绿色 */
+}
+
+/* 已使用部分为浅红色 */
+.battery-progress[data-percent="10"] .battery-bar:nth-child(1),
+.battery-progress[data-percent="20"] .battery-bar:nth-child(-n+2),
+.battery-progress[data-percent="30"] .battery-bar:nth-child(-n+3),
+.battery-progress[data-percent="40"] .battery-bar:nth-child(-n+4),
+.battery-progress[data-percent="50"] .battery-bar:nth-child(-n+5),
+.battery-progress[data-percent="60"] .battery-bar:nth-child(-n+6),
+.battery-progress[data-percent="70"] .battery-bar:nth-child(-n+7),
+.battery-progress[data-percent="80"] .battery-bar:nth-child(-n+8),
+.battery-progress[data-percent="90"] .battery-bar:nth-child(-n+9),
+.battery-progress[data-percent="100"] .battery-bar:nth-child(-n+10) {
+    background-color: rgba(220, 53, 69, 0.2); /* 浅红色表示已使用 */
+}
+
+/* 删除旧的根据进度值设置颜色的规则，因为现在使用统一的红绿对比 */
+.battery-percent {
+    font-size: 0.75rem;
+    color: #6c757d;
+    min-width: 40px;
+}
+#registration-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* 添加侧边栏菜单样式 */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+#sidebar {
+    width: 250px;
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.sidebar-header {
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sidebar-header h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #343a40;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 15px 0;
+    margin: 0;
+}
+
+.nav-item {
+    margin: 5px 0;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    color: #495057;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: #e9ecef;
+    color: #0d6efd;
+    border-left-color: #0d6efd;
+}
+
+.nav-link i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+#content {
+    flex: 1;
+    margin-left: 250px;
+    padding: 20px;
+}
+
+.page-content {
+    display: none;
+}
+
+.page-content.active {
+    display: block;
+}
+
+/* 响应式样式 */
+@media (max-width: 768px) {
+    #sidebar {
+        width: 70px;
+    }
+    
+    #content {
+        margin-left: 70px;
+    }
+    
+    .sidebar-header h4, .nav-link span {
+        display: none;
+    }
+    
+    .nav-link {
+        justify-content: center;
+        padding: 15px;
+    }
+    
+    .nav-link i {
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    #sidebar {
+        width: 0;
+        overflow: hidden;
+    }
+    
+    #content {
+        margin-left: 0;
+    }
+}
+
+/* 侧边栏底部文案样式 */
+.sidebar-footer {
+    padding: 15px;
+    text-align: center;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* 调整侧边栏内容区域，为底部文案留出空间 */
+.nav-menu {
+    padding-bottom: 60px; /* 确保内容不会被底部文案遮挡 */
+}
+
+/* 在响应式布局中隐藏/显示footer文本 */
+@media (max-width: 768px) {
+    .sidebar-footer {
+        padding: 10px 5px;
+        font-size: 0.7rem;
+    }
+    
+    .sidebar-footer span {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .sidebar-footer span {
+        display: inline-block;
+    }
+}
+
+/* 更新编辑配置按钮样式 - 占满一行 */
+#edit-config-btn {
+    display: block;
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    font-size: 1.05rem;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    border: none;
+}
+
+#edit-config-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+#edit-config-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 调整徽章位置，使其更加合理 */
+#edit-config-btn .position-absolute {
+    top: -8px !important;
+    right: -8px !important;
+    left: auto !important;
+    transform: none !important;
+}
+
+/* 卡片标题与按钮的对齐 */
+.card-header.bg-white.d-flex {
+    padding: 1rem 1.25rem;
+}
+
+/* 配置按钮样式 */
+.config-actions button {
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+#cancel-config-btn {
+    background-color: #6c757d;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
+}
+
+#cancel-config-btn:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+#save-config-btn {
+    background-color: #198754;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.12);
+}
+
+#save-config-btn:hover {
+    background-color: #157347;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
