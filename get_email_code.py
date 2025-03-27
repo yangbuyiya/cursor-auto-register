@@ -117,6 +117,8 @@ class EmailVerificationHandler:
         code_match = re.search(r"(?<![a-zA-Z@.])\b\d{6}\b", mail_text)
 
         if code_match:
+            # 清理邮件
+            self._cleanup_mail(first_id)
             return code_match.group(), first_id
         return None, None
 
@@ -129,8 +131,8 @@ class EmailVerificationHandler:
             "epin": self.pin,
         }
 
-        # 最多尝试5次
-        for _ in range(5):
+        # 最多尝试3次
+        for _ in range(3):
             response = self.session.delete(delete_url, data=payload)
             try:
                 result = response.json().get("result")
@@ -139,7 +141,7 @@ class EmailVerificationHandler:
             except:
                 pass
 
-            # 如果失败,等待0.5秒后重试
-            time.sleep(0.5)
+            # 如果失败,等待0.2秒后重试
+            time.sleep(0.2)
 
         return False
