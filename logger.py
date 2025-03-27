@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 from config import LOG_LEVEL, LOG_FORMAT, LOG_DATE_FORMAT
 
@@ -16,14 +15,18 @@ logging.basicConfig(
 
 logger = logging.getLogger()
 
+
 def info(message):
     logger.info(message)
+
 
 def warning(message):
     logger.warning(message)
 
+
 def error(message):
     logger.error(message)
 
+
 def debug(message):
-    logger.debug(message) 
+    logger.debug(message)

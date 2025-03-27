@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-import logging
 
 # 加载.env文件中的环境变量
 load_dotenv()
@@ -63,7 +62,9 @@ EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "mailto.plus")
 # 临时邮箱PIN码（如果需要）
 EMAIL_PIN = os.getenv("EMAIL_PIN", "")
 # 可用于注册的邮箱域名列表（逗号分隔）
-EMAIL_DOMAINS = [domain.strip() for domain in os.getenv("EMAIL_DOMAINS", "ddcat.store").split(",")]
+EMAIL_DOMAINS = [
+    domain.strip() for domain in os.getenv("EMAIL_DOMAINS", "ddcat.store").split(",")
+]
 # 邮件验证码获取最大重试次数
 EMAIL_VERIFICATION_RETRIES = int(os.getenv("EMAIL_VERIFICATION_RETRIES", 5))
 # 邮件验证码获取重试间隔(秒)
@@ -71,7 +72,7 @@ EMAIL_VERIFICATION_WAIT = int(os.getenv("EMAIL_VERIFICATION_WAIT", 5))
 
 # ===== 数据库配置 =====
 # 数据库连接URL，默认使用SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:////app/accounts.db") 
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:////app/accounts.db")
 
 # ===== Cursor main.js 配置 =====
 # Cursor 主文件路径

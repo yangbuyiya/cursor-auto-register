@@ -59,7 +59,7 @@ def get_random_user_agent():
         platform = 'macos'
     elif sys.platform.startswith('linux'):
         platform = 'linux'
-    
+
     # 获取当前平台的UA列表
     ua_list = USER_AGENTS.get(platform, USER_AGENTS['windows'])
     return random.choice(ua_list)
@@ -75,7 +75,7 @@ class BrowserManager:
 
             if BROWSER_PROXY:
                 co.set_proxy(BROWSER_PROXY)
-            
+
             # 如果配置了特定的浏览器路径，则使用
             if BROWSER_PATH and os.path.exists(BROWSER_PATH):
                 co.set_browser_path(BROWSER_PATH)

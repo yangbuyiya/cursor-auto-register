@@ -2,7 +2,6 @@ import requests
 
 
 class Cursor:
-
     models = [
         "claude-3-5-sonnet-20241022",
         "claude-3-opus",
@@ -46,7 +45,7 @@ class Cursor:
 
     @classmethod
     def get_trial_remaining_days(cls, user, token):
-        url = f"https://www.cursor.com/api/auth/stripe"
+        url = "https://www.cursor.com/api/auth/stripe"
 
         headers = {
             "Content-Type": "application/json",

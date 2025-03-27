@@ -15,14 +15,16 @@ class CursorAuthManager:
             self.db_path = os.path.join(
                 appdata, "Cursor", "User", "globalStorage", "state.vscdb"
             )
-        elif sys.platform == "darwin": # macOS
-            self.db_path = os.path.abspath(os.path.expanduser(
-                "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
-            ))
-        elif sys.platform == "linux" : # Linux 和其他类Unix系统
-            self.db_path = os.path.abspath(os.path.expanduser(
-                "~/.config/Cursor/User/globalStorage/state.vscdb"
-            ))
+        elif sys.platform == "darwin":  # macOS
+            self.db_path = os.path.abspath(
+                os.path.expanduser(
+                    "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+                )
+            )
+        elif sys.platform == "linux":  # Linux 和其他类Unix系统
+            self.db_path = os.path.abspath(
+                os.path.expanduser("~/.config/Cursor/User/globalStorage/state.vscdb")
+            )
         else:
             raise NotImplementedError(f"不支持的操作系统: {sys.platform}")
 
@@ -55,10 +57,9 @@ class CursorAuthManager:
             cursor = conn.cursor()
 
             for key, value in updates:
-
                 # 如果没有更新任何行,说明key不存在,执行插入
                 # 检查 accessToken 是否存在
-                check_query = f"SELECT COUNT(*) FROM itemTable WHERE key = ?"
+                check_query = "SELECT COUNT(*) FROM itemTable WHERE key = ?"
                 cursor.execute(check_query, (key,))
                 if cursor.fetchone()[0] == 0:
                     insert_query = "INSERT INTO itemTable (key, value) VALUES (?, ?)"

@@ -1,12 +1,10 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, DateTime, Text, text, BigInteger, Index
-from datetime import datetime
-import os
-import pathlib
+from sqlalchemy import Column, String, Text, text, BigInteger
 from contextlib import asynccontextmanager
 from logger import info, error
 from config import DATABASE_URL
+
 
 # 基础模型类
 class Base(DeclarativeBase):

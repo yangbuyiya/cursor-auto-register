@@ -3,7 +3,6 @@ import sys
 import json
 import uuid
 import hashlib
-import shutil
 from colorama import Fore, Style, init
 
 # 初始化colorama
@@ -123,12 +122,12 @@ class MachineIDResetter:
 
 
 if __name__ == "__main__":
-    print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{EMOJI['RESET']} Cursor 机器标识重置工具{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
 
     resetter = MachineIDResetter()
     resetter.reset_machine_ids()
 
-    print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
     input(f"{EMOJI['INFO']} 按回车键退出...")
