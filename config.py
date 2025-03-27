@@ -71,8 +71,18 @@ EMAIL_VERIFICATION_RETRIES = int(os.getenv("EMAIL_VERIFICATION_RETRIES", 5))
 EMAIL_VERIFICATION_WAIT = int(os.getenv("EMAIL_VERIFICATION_WAIT", 5))
 
 # ===== 数据库配置 =====
-# 数据库连接URL，默认使用SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:////app/accounts.db")
+# 数据库文件名
+DB_NAME = "accounts.db"
+# 根据操作系统生成适当的数据库文件路径
+if os.name == "nt":  # Windows
+    DB_PATH = os.path.join(os.getcwd(), DB_NAME)
+    DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+else:  # Linux/Unix
+    DB_PATH = os.path.join("/app", DB_NAME)
+    DATABASE_URL = f"sqlite+aiosqlite:{DB_PATH}"
+
+# 允许通过环境变量覆盖默认的数据库URL
+DATABASE_URL = os.getenv("DATABASE_URL", DATABASE_URL)
 
 # ===== Cursor main.js 配置 =====
 # Cursor 主文件路径
