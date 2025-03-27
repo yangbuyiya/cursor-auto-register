@@ -45,7 +45,7 @@ def handle_oneapi_cursor_channel(
     )
 
     if None in [remaining_balance, remaining_days]:
-        print(f"[OneAPI] Invalid resposne")
+        print("[OneAPI] Invalid resposne")
         return None
 
     if remaining_balance < low_balance_threshold or (
@@ -64,7 +64,6 @@ def handle_oneapi_cursor_channel(
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--oneapi_url", type=str, required=False, help="URL link for One-API website"
