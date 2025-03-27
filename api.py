@@ -158,16 +158,6 @@ async def run_registration():
                 registration_status["last_run"] = datetime.now().isoformat()
                 registration_status["total_runs"] += 1
 
-                # 初始化浏览器管理器
-                if not browser_manager:
-                    browser_manager = BrowserManager()
-                    if not browser_manager.init_browser():
-                        error("浏览器初始化失败，终止注册任务")
-                        registration_status["failed_runs"] += 1
-                        registration_status["last_status"] = "error"
-                        registration_status["is_running"] = False
-                        break
-
                 # 调用注册函数
                 try:
                     success = await asyncio.get_event_loop().run_in_executor(
