@@ -975,6 +975,7 @@ async def use_account_token(id: int):
 # 添加配置相关模型
 class ConfigModel(BaseModel):
     BROWSER_HEADLESS: bool
+    DYNAMIC_USERAGENT: Optional[bool] = False
     BROWSER_USER_AGENT: str
     MAX_ACCOUNTS: int
     EMAIL_DOMAINS: str
@@ -999,7 +1000,8 @@ async def get_config():
             "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME", ""),
             "EMAIL_PIN": os.getenv("EMAIL_PIN", ""),
             "BROWSER_PATH": os.getenv("BROWSER_PATH", ""),
-            "CURSOR_PATH": os.getenv("CURSOR_PATH", "")
+            "CURSOR_PATH": os.getenv("CURSOR_PATH", ""),
+            "DYNAMIC_USERAGENT": os.getenv("DYNAMIC_USERAGENT", "False").lower() == "true"
         }
         
         return {"success": True, "data": config}
@@ -1025,6 +1027,7 @@ async def update_config(config: ConfigModel):
         # 构建配置字典
         config_dict = {
             "BROWSER_HEADLESS": str(config.BROWSER_HEADLESS),
+            "DYNAMIC_USERAGENT": str(config.DYNAMIC_USERAGENT),
             "BROWSER_USER_AGENT": config.BROWSER_USER_AGENT,
             "MAX_ACCOUNTS": str(config.MAX_ACCOUNTS),
             "EMAIL_DOMAINS": config.EMAIL_DOMAINS,

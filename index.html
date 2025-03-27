@@ -629,6 +629,14 @@
                                         <small class="text-muted">用于注册的邮箱域名，多个域名用逗号分隔</small>
                                     </div>
                                     <div class="mb-3">
+                                        <label for="dynamic-useragent" class="form-label">动态User-Agent</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="dynamic-useragent" disabled>
+                                            <label class="form-check-label" for="dynamic-useragent">启用动态User-Agent</label>
+                                        </div>
+                                        <small class="text-muted">启用后将从预设的UA列表中随机选择，无需手动配置User-Agent</small>
+                                    </div>
+                                    <div class="mb-3" id="useragent-input-container">
                                         <label for="browser-useragent" class="form-label">浏览器User-Agent</label>
                                         <input type="text" id="browser-useragent" class="form-control" disabled>
                                         <small class="text-muted">浏览器模拟的用户代理字符串</small>
@@ -1828,6 +1836,11 @@
                     if (data.success) {
                         const config = data.data;
                         $("#browser-headless").val(config.BROWSER_HEADLESS.toString());
+                        $("#dynamic-useragent").prop('checked', config.DYNAMIC_USERAGENT || false);
+                        
+                        // 触发动态UA的change事件
+                        $("#dynamic-useragent").trigger('change');
+                        
                         $("#browser-useragent").val(config.BROWSER_USER_AGENT);
                         $("#max-accounts").val(config.MAX_ACCOUNTS);
                         $("#email-domains").val(config.EMAIL_DOMAINS);
@@ -1849,9 +1862,12 @@
         // 保存配置函数
         function saveConfig() {
             showLoading();
+            const isDynamicUA = $("#dynamic-useragent").prop('checked');
+            
             const config = {
                 BROWSER_HEADLESS: $("#browser-headless").val() === 'true',
-                BROWSER_USER_AGENT: $("#browser-useragent").val(),
+                DYNAMIC_USERAGENT: isDynamicUA,
+                BROWSER_USER_AGENT: isDynamicUA ? "" : $("#browser-useragent").val(),
                 MAX_ACCOUNTS: parseInt($("#max-accounts").val()),
                 EMAIL_DOMAINS: $("#email-domains").val(),
                 EMAIL_USERNAME: $("#email-username").val(),
@@ -1889,6 +1905,10 @@
             const inputs = $('#config-form select, #config-form input');
             if (enable) {
                 inputs.prop('disabled', false);
+                // 如果动态UA已启用，保持UA输入框禁用
+                if ($("#dynamic-useragent").prop('checked')) {
+                    $("#browser-useragent").prop('disabled', true);
+                }
                 $('#save-config-btn, #cancel-config-btn').show();
                 $('#edit-config-btn').hide();
             } else {
@@ -1897,6 +1917,20 @@
                 $('#edit-config-btn').show();
             }
         }
+
+        // 动态User-Agent切换逻辑
+        $("#dynamic-useragent").change(function() {
+            const isDynamicUA = $(this).prop('checked');
+            if (isDynamicUA) {
+                $("#browser-useragent").prop('disabled', true);
+                $("#useragent-input-container").addClass('text-muted');
+            } else {
+                // 只有在编辑模式下才启用输入框
+                const isEditMode = !$("#edit-config-btn").is(":visible");
+                $("#browser-useragent").prop('disabled', !isEditMode);
+                $("#useragent-input-container").removeClass('text-muted');
+            }
+        });
     </script>
 
     <!-- 添加删除确认对话框 -->

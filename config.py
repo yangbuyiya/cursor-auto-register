@@ -37,9 +37,15 @@ REGISTRATION_RETRY_INTERVAL = int(os.getenv("REGISTRATION_RETRY_INTERVAL", 5))
 # 是否以无头模式运行浏览器（不显示界面）
 BROWSER_HEADLESS = os.getenv("BROWSER_HEADLESS", "true").lower() == "true"
 # 浏览器可执行文件路径（为空则使用默认路径）
-BROWSER_EXECUTABLE_PATH = os.getenv("BROWSER_EXECUTABLE_PATH", None)
+BROWSER_PATH = os.getenv("BROWSER_PATH", None)
 # 浏览器下载文件保存路径
 BROWSER_DOWNLOAD_PATH = os.getenv("BROWSER_DOWNLOAD_PATH", None)
+# 是否使用动态ua池
+DYNAMIC_USERAGENT = os.getenv("DYNAMIC_USERAGENT", "false").lower() == "true"
+# 浏览器代理
+BROWSER_PROXY = os.getenv("BROWSER_PROXY", None)
+# 浏览器User-Agent
+BROWSER_USER_AGENT = os.getenv("BROWSER_USER_AGENT", None)
 
 # ===== Cursor URL配置 =====
 # Cursor登录页面URL
