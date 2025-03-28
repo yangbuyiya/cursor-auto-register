@@ -715,8 +715,8 @@ h2, h3, h4, h5 {
 #edit-config-btn {
     display: block;
     width: 100%;
-    margin-top: 1.5rem;
     padding: 0.75rem 1rem;
+    margin-bottom: 0.25rem;
     font-weight: 500;
     font-size: 1.05rem;
     text-align: center;

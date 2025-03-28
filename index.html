@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
     <!-- 添加动画库 -->
     <link href="static/css/animate.min.css" rel="stylesheet">
 </head>
+
 <body class="app-layout">
     <!-- 烟花动画画布 -->
     <canvas id="fireworks-canvas"></canvas>
@@ -77,7 +79,7 @@
                                             <i class="fas fa-check-circle text-success me-2"></i>
                                             <span id="task-status-text">系统空闲中，可以开始新任务</span>
                                         </div>
-                                        
+
                                         <!-- 账号使用情况显示 -->
                                         <div class="usage-info mt-2">
                                             <div class="usage-numbers">
@@ -105,7 +107,8 @@
                                     </div>
                                 </div>
                                 <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                                    <button id="refresh-btn" class="btn btn-outline-secondary me-2" style="display: none;">
+                                    <button id="refresh-btn" class="btn btn-outline-secondary me-2"
+                                        style="display: none;">
                                         <i class="fas fa-sync-alt me-1"></i> 刷新数据
                                     </button>
                                     <button id="start-registration" class="btn btn-primary me-2">
@@ -116,7 +119,7 @@
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <!-- 任务详细信息 -->
                             <div id="task-details" class="mt-4">
                                 <div class="card border-0 bg-light">
@@ -141,7 +144,7 @@
                                                     <span class="text-muted">成功率: </span>
                                                     <span id="success-rate">N/A</span>
                                                     <span class="ms-2">
-                                                        (<span class="text-success" id="successful-runs">0</span> 成功 / 
+                                                        (<span class="text-success" id="successful-runs">0</span> 成功 /
                                                         <span class="text-danger" id="failed-runs">0</span> 失败)
                                                     </span>
                                                 </div>
@@ -150,7 +153,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div id="registration-details" class="mt-3" style="display: none;">
                                 <div class="alert alert-info">
                                     <div class="d-flex align-items-center">
@@ -166,7 +169,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 在搜索栏旁边添加排序控件 -->
             <div class="row mb-3 align-items-center">
                 <div class="col-md-6">
@@ -186,15 +189,18 @@
                 <div class="col-md-6">
                     <div class="d-flex justify-content-end">
                         <div class="btn-group me-2">
-                            <button class="btn btn-sm btn-outline-primary" style="width: 100px;" id="export-accounts-btn">
+                            <button class="btn btn-sm btn-outline-primary" style="width: 100px;"
+                                id="export-accounts-btn">
                                 <i class="fas fa-file-export me-1"></i>导出账号
                             </button>
-                            <button class="btn btn-sm btn-outline-success" style="width: 100px;" id="import-accounts-btn">
+                            <button class="btn btn-sm btn-outline-success" style="width: 100px;"
+                                id="import-accounts-btn">
                                 <i class="fas fa-file-import me-1"></i>导入账号
                             </button>
                         </div>
                         <div class="input-group">
-                            <input type="text" id="search-input" class="form-control form-control-sm" placeholder="搜索账号...">
+                            <input type="text" id="search-input" class="form-control form-control-sm"
+                                placeholder="搜索账号...">
                             <button class="btn btn-sm btn-outline-secondary" type="button" id="search-btn">
                                 <i class="fas fa-search"></i>
                             </button>
@@ -234,7 +240,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- 账号列表 -->
             <div class="row">
                 <div class="col-12">
@@ -273,7 +279,7 @@
                         共 <span id="total-accounts" class="fw-bold text-primary">0</span> 个账号，
                         第 <span id="current-page" class="fw-bold">1</span>/<span id="total-pages">1</span> 页
                     </div>
-                    
+
                     <nav aria-label="账号分页">
                         <ul class="pagination mb-0">
                             <li class="page-item" id="prev-page">
@@ -281,7 +287,8 @@
                                     <i class="fas fa-angle-left"></i>
                                 </a>
                             </li>
-                            <li class="page-item page-number active"><a class="page-link" href="#" data-page="1">1</a></li>
+                            <li class="page-item page-number active"><a class="page-link" href="#" data-page="1">1</a>
+                            </li>
                             <!-- 页码会动态生成 -->
                             <li class="page-item" id="next-page">
                                 <a class="page-link" href="#" aria-label="下一页">
@@ -290,7 +297,7 @@
                             </li>
                         </ul>
                     </nav>
-                    
+
                     <div class="per-page-selector">
                         <select id="per-page" class="form-select form-select-sm">
                             <option value="10">每页10条</option>
@@ -327,8 +334,10 @@
                                         <div class="mb-3">
                                             <label for="dynamic-useragent" class="form-label">动态User-Agent</label>
                                             <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="dynamic-useragent" disabled>
-                                                <label class="form-check-label" for="dynamic-useragent">启用动态User-Agent</label>
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                    id="dynamic-useragent" disabled>
+                                                <label class="form-check-label"
+                                                    for="dynamic-useragent">启用动态User-Agent</label>
                                             </div>
                                             <small class="text-muted">启用后将从预设的UA列表中随机选择，无需手动配置User-Agent</small>
                                         </div>
@@ -338,8 +347,14 @@
                                             <small class="text-muted">浏览器模拟的用户代理字符串</small>
                                         </div>
                                         <div class="mb-3">
+                                            <label for="browser-path" class="form-label">浏览器路径 (可选)</label>
+                                            <input type="text" id="browser-path" class="form-control" disabled>
+                                            <small class="text-muted">Windows下浏览器可执行文件的完整路径</small>
+                                        </div>
+                                        <div class="mb-3">
                                             <label for="accounts-limit" class="form-label">最大账号数量</label>
-                                            <input type="number" id="accounts-limit" class="form-control" min="1" disabled>
+                                            <input type="number" id="accounts-limit" class="form-control" min="1"
+                                                disabled>
                                             <small class="text-muted">系统允许创建的最大账号数量</small>
                                         </div>
                                     </div>
@@ -347,8 +362,8 @@
                                         <div class="mb-3">
                                             <label for="email-type" class="form-label">邮箱类型</label>
                                             <select id="email-type" class="form-control" disabled>
-                                                <option value="tempemail">TempEmail</option>
-                                                <option value="zmail">ZMail</option>
+                                                <option value="tempemail">TempEmail（https://tempmail.plus/）</option>
+                                                <option value="zmail">ZMail（https://zmail.plus/）</option>
                                             </select>
                                             <small class="text-muted">选择用于注册的临时邮箱服务类型</small>
                                         </div>
@@ -357,12 +372,13 @@
                                             <input type="text" id="email-domains" class="form-control" disabled>
                                             <small class="text-muted">用于注册的邮箱域名，多个域名用逗号分隔</small>
                                         </div>
-                           
+
                                         <!-- TempEmail相关字段 -->
                                         <div id="tempemail-fields">
                                             <div class="mb-3">
                                                 <label for="email-username" class="form-label">临时邮箱用户名</label>
-                                                <input type="text" id="email-username" class="form-control" placeholder="加载中...">
+                                                <input type="text" id="email-username" class="form-control"
+                                                    placeholder="加载中...">
                                                 <small class="text-muted">用于接收验证码的临时邮箱用户名（不需要输入@及后面的部分）</small>
                                             </div>
                                             <div class="mb-3">
@@ -371,7 +387,7 @@
                                                 <small class="text-muted">临时邮箱PIN码（如果需要）</small>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- ZMail相关字段 -->
                                         <div id="zmail-fields" style="display: none;">
                                             <div class="mb-3">
@@ -382,90 +398,97 @@
                                             <div class="mb-3">
                                                 <label for="email-proxy-enabled" class="form-label">邮箱代理</label>
                                                 <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" role="switch" id="email-proxy-enabled" disabled>
-                                                    <label class="form-check-label" for="email-proxy-enabled">启用邮箱代理</label>
+                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                        id="email-proxy-enabled" disabled>
+                                                    <label class="form-check-label"
+                                                        for="email-proxy-enabled">启用邮箱代理</label>
                                                 </div>
                                                 <small class="text-muted">是否启用邮箱API代理</small>
                                             </div>
                                             <div class="mb-3" id="email-proxy-address-container">
                                                 <label for="email-proxy-address" class="form-label">邮箱代理地址</label>
-                                                <input type="text" id="email-proxy-address" class="form-control" disabled>
+                                                <input type="text" id="email-proxy-address" class="form-control"
+                                                    disabled>
                                                 <small class="text-muted">邮箱API代理服务器地址</small>
                                             </div>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="browser-path" class="form-label">浏览器路径 (可选)</label>
-                                            <input type="text" id="browser-path" class="form-control" disabled>
-                                            <small class="text-muted">Windows下浏览器可执行文件的完整路径</small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="cursor-path" class="form-label">Cursor路径 (可选)</label>
                                             <input type="text" id="cursor-path" class="form-control" disabled>
                                             <small class="text-muted">Cursor安装目录的完整路径</small>
                                         </div>
-                                </div>
-                                <!-- 在系统配置表单中添加代理设置部分 -->
-                                <div class="config-section card mb-3">
-                                    <div class="card-header bg-light">
-                                        <h5 class="mb-0">代理服务器设置</h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="form-check form-switch mb-3">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="use-proxy" disabled name="USE_PROXY">
-                                            <label class="form-check-label" for="use-proxy">启用代理服务器</label>
+                                    <!-- 在系统配置表单中添加代理设置部分 -->
+                                    <div class="config-section card mb-3">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0">代理服务器设置</h5>
                                         </div>
-                                        
-                                        <div id="proxy-settings" class="mb-3">
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label for="proxy-type" class="form-label">代理类型</label>
-                                                    <select class="form-select" id="proxy-type" disabled name="PROXY_TYPE">
-                                                        <option value="http">HTTP</option>
-                                                        <option value="https">HTTPS</option>
-                                                        <option value="socks4">SOCKS4</option>
-                                                        <option value="socks5">SOCKS5</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="proxy-host" class="form-label">代理服务器地址</label>
-                                                    <input type="text" class="form-control" id="proxy-host" disabled name="PROXY_HOST" placeholder="例如: 127.0.0.1">
-                                                </div>
+                                        <div class="card-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" role="switch"
+                                                    id="use-proxy" disabled name="USE_PROXY">
+                                                <label class="form-check-label" for="use-proxy">启用代理服务器</label>
                                             </div>
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label for="proxy-port" class="form-label">代理服务器端口</label>
-                                                    <input type="number" class="form-control" id="proxy-port" disabled name="PROXY_PORT" placeholder="例如: 7890">
+
+                                            <div id="proxy-settings" class="mb-3">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-type" class="form-label">代理类型</label>
+                                                        <select class="form-select" id="proxy-type" disabled
+                                                            name="PROXY_TYPE">
+                                                            <option value="http">HTTP</option>
+                                                            <option value="https">HTTPS</option>
+                                                            <option value="socks4">SOCKS4</option>
+                                                            <option value="socks5">SOCKS5</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-host" class="form-label">代理服务器地址</label>
+                                                        <input type="text" class="form-control" id="proxy-host" disabled
+                                                            name="PROXY_HOST" placeholder="例如: 127.0.0.1">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <label for="proxy-timeout" class="form-label">超时时间 (秒)</label>
-                                                    <input type="number" class="form-control" id="proxy-timeout" disabled name="PROXY_TIMEOUT" value="10">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-port" class="form-label">代理服务器端口</label>
+                                                        <input type="number" class="form-control" id="proxy-port"
+                                                            disabled name="PROXY_PORT" placeholder="例如: 7890">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-timeout" class="form-label">超时时间 (秒)</label>
+                                                        <input type="number" class="form-control" id="proxy-timeout"
+                                                            disabled name="PROXY_TIMEOUT" value="10">
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-md-6">
-                                                    <label for="proxy-username" class="form-label">用户名 (可选)</label>
-                                                    <input type="text" class="form-control" id="proxy-username" disabled name="PROXY_USERNAME" placeholder="认证用户名">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="proxy-password" class="form-label">密码 (可选)</label>
-                                                    <input type="password" class="form-control" id="proxy-password" disabled name="PROXY_PASSWORD" placeholder="认证密码">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-username" class="form-label">用户名 (可选)</label>
+                                                        <input type="text" class="form-control" id="proxy-username"
+                                                            disabled name="PROXY_USERNAME" placeholder="认证用户名">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="proxy-password" class="form-label">密码 (可选)</label>
+                                                        <input type="password" class="form-control" id="proxy-password"
+                                                            disabled name="PROXY_PASSWORD" placeholder="认证密码">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <!-- 将按钮容器从text-end改为新的栅格布局 -->
-                                <div class="row mt-4 config-actions" id="config-actions" style="display:none">
-                                    <div class="col-6 pe-1">
-                                        <button type="button" id="cancel-config-btn" class="btn btn-secondary w-100">取消</button>
+                                    <!-- 将按钮容器从text-end改为新的栅格布局 -->
+                                    <div class="row config-actions" id="config-actions" style="display:none">
+                                        <div class="col-6 pe-1">
+                                            <button type="button" id="cancel-config-btn"
+                                                class="btn btn-secondary w-100">取消</button>
+                                        </div>
+                                        <div class="col-6 ps-1">
+                                            <button type="submit" id="save-config-btn"
+                                                class="btn btn-success w-100">保存配置</button>
+                                        </div>
                                     </div>
-                                    <div class="col-6 ps-1">
-                                        <button type="submit" id="save-config-btn" class="btn btn-success w-100">保存配置</button>
-                                    </div>
-                                </div>
                             </form>
-                            <div class="text-center mt-3">
+
+                            <div class="text-center">
                                 <button id="edit-config-btn" class="btn btn-warning position-relative">
                                     <i class="fas fa-edit me-1"></i> 编辑配置
                                     <span class="position-absolute badge rounded-pill bg-danger">
@@ -504,7 +527,8 @@
     </div>
 
     <!-- 删除确认对话框 -->
-    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -537,7 +561,8 @@
                         <label for="tokenFullText" class="form-label">完整Token:</label>
                         <div class="input-group">
                             <textarea id="tokenFullText" class="form-control" rows="5" readonly></textarea>
-                            <button class="btn btn-outline-primary copy-btn" type="button" id="copyTokenBtn" title="复制Token">
+                            <button class="btn btn-outline-primary copy-btn" type="button" id="copyTokenBtn"
+                                title="复制Token">
                                 <i class="fas fa-copy"></i>
                             </button>
                         </div>
@@ -558,7 +583,8 @@
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
         <div class="d-flex align-items-center small text-muted">
             <span class="me-2">自动刷新（10秒/次）</span>
-            <div class="spinner-border spinner-border-sm text-secondary" role="status" style="width: 0.8rem; height: 0.8rem;">
+            <div class="spinner-border spinner-border-sm text-secondary" role="status"
+                style="width: 0.8rem; height: 0.8rem;">
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>
@@ -573,4 +599,5 @@
     <!-- 添加菜单交互 JS -->
     <script src="static/js/menu.js"></script>
 </body>
+
 </html>

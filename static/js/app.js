@@ -67,16 +67,21 @@ function bindEventHandlers() {
     // 可以添加更多事件绑定...
 
     // 在bindEventHandlers函数中添加配置相关事件
-    $("#edit-config-btn").click(function() {
+    $("#edit-config-btn").click(function(e) {
+        e.preventDefault(); // 明确阻止任何默认行为
+        console.log("点击编辑配置按钮");
         enableConfigForm(true);
     });
 
-    $("#cancel-config-btn").click(function() {
+    $("#cancel-config-btn").click(function(e) {
+        e.preventDefault();
+        console.log("取消编辑配置");
         enableConfigForm(false);
-        loadConfig(); // 重新加载配置
+        loadConfig(); // 重新加载原始配置
     });
 
     $("#config-form").submit(function(e) {
+        console.log("click config-form submit");
         e.preventDefault();
         saveConfig();
     });
