@@ -10,6 +10,7 @@ from config import (
     SETTINGS_URL,
     EMAIL_DOMAINS,
     REGISTRATION_MAX_RETRIES,
+    EMAIL_TYPE
 )
 
 
@@ -150,6 +151,8 @@ def sign_up_account(browser, tab, account_info):
     info(
         f"账号信息: 邮箱: {account_info['email']}, 密码: {account_info['password']}, 姓名: {account_info['first_name']} {account_info['last_name']}"
     )
+    if EMAIL_TYPE == "zmail":
+        EmailVerificationHandler.create_zmail_email(account_info)
     tab.get(SIGN_UP_URL)
     try:
         if tab.ele("@name=first_name"):

@@ -1196,7 +1196,22 @@ function loadConfig() {
                     }
                 }
                 
+                $("#email-type").val(config.EMAIL_TYPE);
+                $("#email-proxy-enabled").prop('checked', config.EMAIL_PROXY_ENABLED || false);
+                if (config.EMAIL_PROXY_ENABLED) {
+                    $("#email-proxy-address").val(config.EMAIL_PROXY_ADDRESS);
+                    $("#email-api").val(config.EMAIL_API);
+                }
+                if (config.EMAIL_TYPE == "tempemail") {
+                    $("#tempemail-fields").show();
+                    $("#zmail-fields").hide();
+                } else if (config.EMAIL_TYPE == "zmail") {
+                    $("#tempemail-fields").hide();
+                    $("#zmail-fields").show();
+                }
+                
                 hideLoading();
+
             } else {
                 showAlert('danger', '加载配置失败: ' + response.message);
                 hideLoading();

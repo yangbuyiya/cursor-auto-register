@@ -345,20 +345,55 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
+                                            <label for="email-type" class="form-label">邮箱类型</label>
+                                            <select id="email-type" class="form-control" disabled>
+                                                <option value="tempemail">TempEmail</option>
+                                                <option value="zmail">ZMail</option>
+                                            </select>
+                                            <small class="text-muted">选择用于注册的临时邮箱服务类型</small>
+                                        </div>
+                                        <div class="mb-3">
                                             <label for="email-domains" class="form-label">邮箱域名</label>
                                             <input type="text" id="email-domains" class="form-control" disabled>
                                             <small class="text-muted">用于注册的邮箱域名，多个域名用逗号分隔</small>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="email-username" class="form-label">临时邮箱用户名</label>
-                                            <input type="text" id="email-username" class="form-control" placeholder="加载中...">
-                                            <small class="text-muted">用于接收验证码的临时邮箱用户名（不需要输入@及后面的部分）</small>
+                           
+                                        <!-- TempEmail相关字段 -->
+                                        <div id="tempemail-fields">
+                                            <div class="mb-3">
+                                                <label for="email-username" class="form-label">临时邮箱用户名</label>
+                                                <input type="text" id="email-username" class="form-control" placeholder="加载中...">
+                                                <small class="text-muted">用于接收验证码的临时邮箱用户名（不需要输入@及后面的部分）</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="email-pin" class="form-label">临时邮箱PIN</label>
+                                                <input type="text" id="email-pin" class="form-control" disabled>
+                                                <small class="text-muted">临时邮箱PIN码（如果需要）</small>
+                                            </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="email-pin" class="form-label">临时邮箱PIN</label>
-                                            <input type="text" id="email-pin" class="form-control" disabled>
-                                            <small class="text-muted">临时邮箱PIN码（如果需要）</small>
+                                        
+                                        <!-- ZMail相关字段 -->
+                                        <div id="zmail-fields" style="display: none;">
+                                            <div class="mb-3">
+                                                <label for="email-api" class="form-label">邮箱API</label>
+                                                <input type="text" id="email-api" class="form-control" disabled>
+                                                <small class="text-muted">ZMail API地址</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="email-proxy-enabled" class="form-label">邮箱代理</label>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="email-proxy-enabled" disabled>
+                                                    <label class="form-check-label" for="email-proxy-enabled">启用邮箱代理</label>
+                                                </div>
+                                                <small class="text-muted">是否启用邮箱API代理</small>
+                                            </div>
+                                            <div class="mb-3" id="email-proxy-address-container">
+                                                <label for="email-proxy-address" class="form-label">邮箱代理地址</label>
+                                                <input type="text" id="email-proxy-address" class="form-control" disabled>
+                                                <small class="text-muted">邮箱API代理服务器地址</small>
+                                            </div>
                                         </div>
+                                        
                                         <div class="mb-3">
                                             <label for="browser-path" class="form-label">浏览器路径 (可选)</label>
                                             <input type="text" id="browser-path" class="form-control" disabled>
@@ -369,7 +404,6 @@
                                             <input type="text" id="cursor-path" class="form-control" disabled>
                                             <small class="text-muted">Cursor安装目录的完整路径</small>
                                         </div>
-                                    </div>
                                 </div>
                                 <!-- 在系统配置表单中添加代理设置部分 -->
                                 <div class="config-section card mb-3">
