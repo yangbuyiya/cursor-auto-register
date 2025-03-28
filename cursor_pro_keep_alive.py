@@ -155,17 +155,10 @@ def sign_up_account(browser, tab, account_info):
         EmailVerificationHandler.create_zmail_email(account_info)
     tab.get(SIGN_UP_URL)
 
-    time.sleep(random.uniform(1, 3))
+    tab.wait(2)
 
-    wait_count = 1
-    while True:
-        if tab.ele("@name=first_name"):
-            break
-        if tab.ele("@name=cf-turnstile-response"):
-            error("开屏就是检测啊，大佬你的IP或UA需要换一下了啊，有问题了...要等一下")
-        time.sleep(random.uniform(3, 5))
-        info(f'第 {wait_count} 次等待...')
-        wait_count += 1
+    if tab.ele("@name=cf-turnstile-response"):
+        error("开屏就是检测啊，大佬你的IP或UA需要换一下了啊，有问题了...要等一下")
 
     try:
         if tab.ele("@name=first_name"):
