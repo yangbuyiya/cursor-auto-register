@@ -344,37 +344,79 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/accounts", response_model=List[Account], tags=["Accounts"])
-async def get_accounts(status: Optional[str] = None):
-    """获取所有可用的账号和token
-
-    可选参数 status 用于过滤账号状态:
-    - active: 只返回正常账号
-    - disabled: 只返回停用账号
-    - deleted: 只返回已删除账号
-    - 不提供参数则返回所有账号
-
-    结果按id降序排列（最新的账号排在前面）
-    """
+@app.get("/accounts", tags=["Accounts"])
+async def get_accounts(
+    page: int = 1, 
+    per_page: int = 10, 
+    search: Optional[str] = None,
+    sort_by: str = "created_at",  # 新增排序字段参数
+    order: str = "desc"  # 新增排序方向参数
+):
+    """获取所有账号列表，支持分页、搜索和排序"""
     try:
         async with get_session() as session:
-            # 构建基本查询，添加按id降序排序
-            query = select(AccountModel).order_by(desc(AccountModel.id))
-
-            # 根据状态过滤
-            if status:
-                query = query.where(AccountModel.status == status)
-
+            # 验证排序参数
+            valid_sort_fields = {"id", "email", "created_at", "usage_limit"}
+            valid_orders = {"asc", "desc"}
+            
+            if sort_by not in valid_sort_fields:
+                sort_by = "created_at"  # 默认排序字段
+            if order not in valid_orders:
+                order = "desc"  # 默认排序方向
+            
+            # 构建基本查询
+            query = select(AccountModel)
+            
+            # 应用排序
+            sort_field = getattr(AccountModel, sort_by)
+            if order == "desc":
+                query = query.order_by(desc(sort_field))
+            else:
+                query = query.order_by(sort_field)
+                
+            # 如果有搜索参数
+            if search:
+                search = f"%{search}%"
+                query = query.where(AccountModel.email.like(search))
+            
+            # 计算总记录数
+            count_query = select(func.count()).select_from(AccountModel)
+            if search:
+                count_query = count_query.where(AccountModel.email.like(search))
+            total_count = await session.scalar(count_query)
+            
+            # 计算分页
+            total_pages = (total_count + per_page - 1) // per_page  # 向上取整
+            
+            # 应用分页
+            query = query.offset((page - 1) * per_page).limit(per_page)
+            
+            # 执行查询
             result = await session.execute(query)
             accounts = result.scalars().all()
-
-            # if not accounts:
-            #     raise HTTPException(status_code=404, detail="没有找到符合条件的账号")
-            return accounts
+            
+            # 构建分页响应
+            return {
+                "success": True,
+                "data": accounts,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total_count": total_count,
+                    "total_pages": total_pages
+                },
+                "sort": {
+                    "field": sort_by,
+                    "order": order
+                }
+            }
     except Exception as e:
-        error(f"获取账号失败: {str(e)}")
+        error(f"获取账号列表失败: {str(e)}")
         error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="服务器内部错误")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"获取账号列表失败: {str(e)}",
+        )
 
 
 @app.get("/account/random", response_model=AccountResponse, tags=["Accounts"])

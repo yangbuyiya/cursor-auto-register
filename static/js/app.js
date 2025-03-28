@@ -1,7 +1,10 @@
 // 全局变量
 const REFRESH_INTERVAL = 10000; // 10秒
 let currentPage = 1;
-const itemsPerPage = 10;
+let totalPages = 1;
+let itemsPerPage = 10;
+let currentSortField = 'created_at';
+let currentSortOrder = 'desc';
 
 // 页面加载完成后执行
 $(document).ready(function() {
@@ -11,11 +14,22 @@ $(document).ready(function() {
 
 // 应用初始化函数 - 提高代码组织性
 function initializeApplication() {
+    // 绑定分页事件必须在DOM准备好后立即执行
+    bindPaginationEvents();
+    
+    // 绑定排序事件
+    bindSortEvents();
+    
+    // 确保不使用ID排序
+    if (currentSortField === 'id') {
+        currentSortField = 'created_at';
+    }
+    
     // 加载配置
     loadConfig();
     
     // 初始加载数据
-    loadAllData();
+    loadAccounts(1, itemsPerPage);
 
     // 设置定时刷新
     setupTaskRefresh();
@@ -29,7 +43,7 @@ function bindEventHandlers() {
     // 按钮事件监听
     $("#refresh-btn").click(function() {
         showLoading();
-        loadAllData();
+        loadAccounts(1, itemsPerPage, $("#search-input").val());
     });
     
     $("#start-registration").click(function() {
@@ -85,191 +99,251 @@ function hideLoading() {
     loadingOverlay.classList.remove('show');
 }
 
-// 加载所有数据
-function loadAllData() {
+// 加载账号数据
+function loadAccounts(page = 1, perPage = itemsPerPage, search = '', sortField = currentSortField, sortOrder = currentSortOrder) {
     showLoading();
     
-    // 获取账号数据
-    fetch('/accounts')
-        .then(res => res.json())
-        .then(data => {
-            console.log('获取到账号数据:', data); // 添加调试日志
-            
-            // 检查并处理返回的数据结构
-            if (Array.isArray(data)) {
-                accounts = data; // 如果直接是数组
-            } else if (data.accounts && Array.isArray(data.accounts)) {
-                accounts = data.accounts; // 如果是包装在accounts属性中
-            } else if (data.data && Array.isArray(data.data)) {
-                accounts = data.data; // 如果是包装在data属性中
+    // 构建URL查询参数
+    let params = new URLSearchParams({
+        page: page,
+        per_page: perPage,
+        sort_by: sortField,
+        order: sortOrder
+    });
+    
+    if (search) {
+        params.append('search', search);
+    }
+    
+    const url = `/accounts?${params.toString()}`;
+    
+    $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(response) {
+            if (response.success) {
+                accounts = response.data;
+                
+                // 更新分页和排序信息
+                currentPage = response.pagination.page;
+                totalPages = response.pagination.total_pages;
+                itemsPerPage = response.pagination.per_page;
+                currentSortField = response.sort.field;
+                currentSortOrder = response.sort.order;
+                
+                // 更新排序控件
+                $("#sort-field").val(currentSortField);
+                $("#sort-order").val(currentSortOrder);
+                
+                // 添加淡入效果
+                $("#accounts-table").css("opacity", 0);
+                
+                // 更新UI
+                updateAccountsTable(accounts);
+                updatePagination(currentPage, totalPages);
+                $("#total-accounts").text(response.pagination.total_count);
+                
+                // 更新每页记录数下拉框
+                $("#per-page").val(itemsPerPage);
+                
+                // 淡入表格
+                $("#accounts-table").animate({opacity: 1}, 300);
+                
+                hideLoading();
             } else {
-                console.error('账号数据格式不正确:', data);
-                accounts = [];
+                showAlert('danger', '加载账号失败: ' + response.message);
+                hideLoading();
             }
-            
-            console.log('处理后的账号数据:', accounts);
-            filteredAccounts = [...accounts];
-            
-            // 渲染账号表格
-            renderAccountsTable();
-            
-            // 然后获取任务状态
-            return fetch('/registration/status');
-        })
-        .then(res => res.json())
-        .then(data => {
-            console.log('获取到任务状态:', data);
-            updateTaskStatusUI(data);
-            
+        },
+        error: function(xhr) {
             hideLoading();
-        })
-        .catch(error => {
-            console.error('加载数据失败:', error);
-            hideLoading();
-            showAlert('加载数据失败，请刷新页面重试', 'danger');
-        });
+            showAlert('danger', '加载账号失败: ' + (xhr.responseJSON?.detail || xhr.statusText));
+        }
+    });
 }
 
-// 启动定时刷新
-function setupTaskRefresh() {
-    // 清除可能存在的旧定时器
-    if (window.taskRefreshInterval) {
-        clearInterval(window.taskRefreshInterval);
-    }
+// 更新分页控件
+function updatePagination(currentPage, totalPages) {
+    // 清除现有页码
+    $(".pagination .page-number").remove();
     
-    // 创建新的10秒定时器
-    window.taskRefreshInterval = setInterval(function() {
-        // 只刷新任务状态，而不是整个页面
-        refreshTaskStatus();
-    }, 10000); // 10秒
-}
-
-// 只刷新任务状态部分的函数
-function refreshTaskStatus() {
-    fetch('/registration/status')
-        .then(res => res.json())
-        .then(data => {
-            // 只更新任务状态区域，不重新加载账号列表
-            updateTaskStatusUI(data);
-        })
-        .catch(error => {
-            console.error('刷新任务状态时发生错误:', error);
-        });
-}
-
-// 更新任务状态UI函数 - 适配实际API返回的数据结构
-function updateTaskStatusUI(data) {
-    console.log('收到任务状态数据:', data); // 保留调试日志
+    // 决定显示哪些页码
+    let pages = [];
     
-    // 数据格式兼容性处理
-    const taskStatus = data || {};
-    
-    // 从正确的嵌套位置获取运行状态和任务状态
-    const isRunning = taskStatus.task_status === 'running' || taskStatus.task_status === 'monitoring';
-    const taskStatusValue = taskStatus.task_status;
-    
-    // 更新状态指示器，添加监控模式的样式
-    if ($('#registration-status').length) {
-        $('#registration-status').removeClass().addClass('badge');
+    // 限制显示的页码数量，使UI更加紧凑
+    if (totalPages <= 5) {
+        // 总页数少于5，显示所有页码
+        for (let i = 1; i <= totalPages; i++) {
+            pages.push(i);
+        }
+    } else {
+        // 总页数大于5，使用更紧凑的布局
         
-        if (taskStatusValue === 'running') {
-            $('#registration-status').addClass('bg-success');
-        } else if (taskStatusValue === 'monitoring') {
-            $('#registration-status').addClass('bg-info');
+        // 总是显示第一页
+        pages.push(1);
+        
+        // 当前页在前3页
+        if (currentPage <= 3) {
+            pages.push(2, 3, 4, '...', totalPages);
+        }
+        // 当前页在后3页
+        else if (currentPage >= totalPages - 2) {
+            pages.push('...', totalPages-3, totalPages-2, totalPages-1, totalPages);
+        }
+        // 当前页在中间
+        else {
+            pages.push('...', currentPage-1, currentPage, currentPage+1, '...', totalPages);
+        }
+    }
+    
+    // 创建页码元素 - 简化HTML生成
+    let pageElements = '';
+    
+    pages.forEach(page => {
+        if (page === '...') {
+            pageElements += `<li class="page-item disabled page-number"><a class="page-link" href="#">…</a></li>`;
         } else {
-            $('#registration-status').addClass('bg-secondary');
+            const isActive = page === currentPage ? 'active' : '';
+            pageElements += `<li class="page-item page-number ${isActive}"><a class="page-link" href="#" data-page="${page}">${page}</a></li>`;
         }
-    }
+    });
     
-    // 更新状态文本，添加监控模式文本
-    if ($('#registration-status').length) {
-        let statusText = '已停止';
-        if (taskStatusValue === 'running') {
-            statusText = '正在运行';
-        } else if (taskStatusValue === 'monitoring') {
-            statusText = '监控模式';
-        }
-        $('#registration-status').text(statusText);
-    }
+    // 使用insertBefore而不是after，确保顺序正确
+    $(pageElements).insertBefore("#next-page");
     
-    // 更新其他状态信息
-    if ($('#last-run').length && taskStatus.registration_details?.last_run) {
-        $('#last-run').text(new Date(taskStatus.registration_details.last_run).toLocaleString());
-    }
+    // 更新上一页/下一页按钮状态
+    $("#prev-page").toggleClass('disabled', currentPage === 1);
+    $("#next-page").toggleClass('disabled', currentPage === totalPages);
     
-    if ($('#last-status').length && taskStatus.registration_details?.last_status) {
-        $('#last-status').text(taskStatus.registration_details.last_status);
-    }
-    
-    if ($('#next-run').length && taskStatus.registration_details?.next_run) {
-        // next_run是Unix时间戳，需要转换
-        $('#next-run').text(new Date(taskStatus.registration_details.next_run * 1000).toLocaleString());
-    }
-    
-    // 更新按钮状态 - 监控模式下也禁用启动按钮
-    if ($('#start-registration').length && $('#stop-registration').length) {
-        if (isRunning) {
-            $('#start-registration').addClass('disabled').prop('disabled', true);
-            $('#stop-registration').removeClass('disabled').prop('disabled', false);
-        } else {
-            $('#start-registration').removeClass('disabled').prop('disabled', false);
-            $('#stop-registration').addClass('disabled').prop('disabled', true);
-        }
-    }
+    // 更新分页信息文本
+    $("#current-page").text(currentPage);
+    $("#total-pages").text(totalPages);
+}
 
-    // 更新统计信息
-    const stats = taskStatus.registration_details?.statistics || {};
-    
-    if ($('#total-runs').length) {
-        $('#total-runs').text(stats.total_runs || 0);
-    }
-    
-    if ($('#successful-runs').length) {
-        $('#successful-runs').text(stats.successful_runs || 0);
-    }
-    
-    if ($('#failed-runs').length) {
-        $('#failed-runs').text(stats.failed_runs || 0);
-    }
-    
-    if ($('#success-rate').length) {
-        $('#success-rate').text(stats.success_rate || '0%');
-    }
-    
-    // 更新剩余槽位信息
-    if ($('#remaining-slots').length) {
-        $('#remaining-slots').text(taskStatus.remaining_slots || 0);
-    }
-    
-    if ($('#current-count').length) {
-        $('#current-count').text(taskStatus.active_count || taskStatus.current_count || 0);
-    }
-    
-    if ($('#max-accounts').length) {
-        $('#max-accounts').text(taskStatus.max_accounts || 0);
-    }
-
-    updateTaskStatusDisplay(data);
-    
-    // 添加状态消息显示
-    if ($('#status-message').length) {
-        if (taskStatus.status_message) {
-            $('#status-message').text(taskStatus.status_message);
-        } else {
-            // 根据任务状态设置默认消息
-            let defaultMessage = '任务未启动';
-            if (taskStatusValue === 'running') {
-                defaultMessage = '正在注册新账号...';
-            } else if (taskStatusValue === 'monitoring') {
-                defaultMessage = '已达到最大账号数量，正在监控账号数量变化...';
-            } else if (taskStatus.registration_details?.last_status === 'completed') {
-                defaultMessage = '任务已完成';
-            } else if (taskStatus.registration_details?.last_status === 'error') {
-                defaultMessage = '任务执行出错，请检查日志';
-            }
-            $('#status-message').text(defaultMessage);
+// 修复分页事件绑定 - 确保在DOM加载完成后绑定
+function bindPaginationEvents() {
+    // 上一页按钮 - 使用事件委托
+    $(document).on('click', "#prev-page:not(.disabled) a", function(e) {
+        e.preventDefault();
+        if (currentPage > 1) {
+            loadAccounts(currentPage - 1, itemsPerPage, $("#search-input").val());
         }
+    });
+    
+    // 下一页按钮 - 使用事件委托
+    $(document).on('click', "#next-page:not(.disabled) a", function(e) {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+            loadAccounts(currentPage + 1, itemsPerPage, $("#search-input").val());
+        }
+    });
+    
+    // 页码点击 - 使用事件委托确保动态生成的元素也能响应
+    $(document).on('click', '.page-number:not(.disabled) .page-link', function(e) {
+        e.preventDefault();
+        const page = parseInt($(this).attr('data-page'));
+        if (!isNaN(page)) {
+            loadAccounts(page, itemsPerPage, $("#search-input").val());
+        }
+    });
+    
+    // 每页显示记录数变更
+    $(document).on('change', "#per-page", function() {
+        itemsPerPage = parseInt($(this).val());
+        loadAccounts(1, itemsPerPage, $("#search-input").val());
+    });
+}
+
+// 修改搜索函数
+function filterAccounts() {
+    const searchTerm = $("#search-input").val().trim();
+    loadAccounts(1, itemsPerPage, searchTerm);
+}
+
+// 更新账号表格
+function updateAccountsTable(accounts) {
+    const accountsBody = $('#accounts-tbody');
+    accountsBody.empty();
+    
+    console.log(`准备渲染账号表格，共${accounts.length}条数据`);
+    
+    if (accounts.length === 0) {
+        // 添加空状态提示
+        accountsBody.html(`
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">暂无账号数据</p>
+                    </div>
+                </td>
+            </tr>
+        `);
+        return;
     }
+    
+    // 渲染每行数据
+    accounts.forEach((account, index) => {
+        console.log(`渲染账号: ${account.email}`);
+        
+        // 完整的行模板，包含所有单元格内容
+        const row = `
+            <tr id="account-row-${account.id}" data-status="${account.status}" 
+                class="${account.status === 'deleted' ? 'table-danger' : account.status === 'disabled' ? 'table-warning' : ''}">
+                <td class="email-column">
+                    ${account.email}
+                    <span class="badge ${account.status === 'active' ? 'bg-success' : account.status === 'disabled' ? 'bg-warning' : 'bg-danger'} ms-2">
+                        ${account.status === 'active' ? '正常' : account.status === 'disabled' ? '停用' : '删除'}
+                    </span>
+                </td>
+                <td class="d-none d-lg-table-cell password-cell">
+                    <span class="password-text">${maskPassword(account.password)}</span>
+                    <i class="fas fa-eye toggle-password" data-password="${account.password}" title="显示/隐藏密码"></i>
+                    <i class="fas fa-copy copy-btn ms-1" data-copy="${account.password}" title="复制密码"></i>
+                </td>
+                ${renderTokenColumn(account.token, account.id)}
+                ${renderUsageProgress(account.usage_limit)}
+                <td class="d-none d-lg-table-cell">
+                    ${account.created_at || '未知'}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary get-usage-btn" data-email="${account.email}" title="查询使用量">
+                        <i class="fas fa-chart-pie"></i>
+                    </button>
+                </td>
+                <td class="operation-column">
+                    <div class="d-flex flex-wrap gap-1">
+                        ${account.status !== 'active' ? 
+                            `<button class="btn btn-sm btn-outline-success status-action" data-email="${account.email}" data-id="${account.id}" data-status="active" title="设为正常">
+                                <i class="fas fa-check-circle"></i>
+                            </button>` : ''}
+                            
+                        ${account.status !== 'disabled' ? 
+                            `<button class="btn btn-sm btn-outline-warning status-action" data-email="${account.email}" data-id="${account.id}" data-status="disabled" title="停用账号">
+                                <i class="fas fa-pause-circle"></i>
+                            </button>` : ''}
+                            
+                        ${account.status !== 'deleted' ? 
+                            `<button class="btn btn-sm btn-outline-danger status-action" data-email="${account.email}" data-id="${account.id}" data-status="deleted" title="标记删除">
+                                <i class="fas fa-times-circle"></i>
+                            </button>` : ''}
+                            
+                        <button class="btn btn-sm btn-danger delete-account-btn" data-email="${account.email}" data-id="${account.id}" title="永久删除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        accountsBody.append(row);
+    });
+    
+    // 绑定事件
+    bindTableEvents();
+    
+    // 更新表头排序指示
+    $('.sortable').removeClass('asc desc');
+    $(`.sortable[data-field="${currentSortField}"]`).addClass(currentSortOrder);
 }
 
 // 渲染账号表格
@@ -410,21 +484,6 @@ function renderPagination() {
 // 更改页码
 function changePage(page) {
     currentPage = page;
-    renderAccountsTable();
-}
-
-// 过滤账号
-function filterAccounts() {
-    const searchTerm = $("#search-input").val().toLowerCase();
-    if (!searchTerm) {
-        filteredAccounts = [...accounts];
-    } else {
-        filteredAccounts = accounts.filter(account => 
-            account.email.toLowerCase().includes(searchTerm) ||
-            account.user.toLowerCase().includes(searchTerm)
-        );
-    }
-    currentPage = 1;
     renderAccountsTable();
 }
 
@@ -912,7 +971,7 @@ function updateAccountStatus(email, id, status) {
             else if (status === 'deleted') statusText = '删除';
             
             showAlert(`账号${id ? '(ID:'+id+')' : ''} ${email} 已成功设置为${statusText}状态`, 'success');
-            loadAllData();
+            loadAccounts(1, itemsPerPage);
         } else {
             showAlert(`更新账号状态失败: ${data.message || '未知错误'}`, 'danger');
         }
@@ -943,7 +1002,7 @@ function deleteAccount(email, id, hardDelete = true) {
             // 关闭模态框
             $('#deleteConfirmModal').modal('hide');
             // 重新加载账号列表
-            loadAllData();
+            loadAccounts(1, itemsPerPage);
         } else {
             showAlert(`删除账号失败: ${data.message || '未知错误'}`, 'danger');
         }
@@ -958,7 +1017,7 @@ function deleteAccount(email, id, hardDelete = true) {
 // 添加强制刷新函数
 function forceRefreshData() {
     window.forceRefresh = true;
-    loadAllData();
+    loadAccounts(1, itemsPerPage);
 }
 
 // 完全重构额度显示函数，精确匹配参考代码
@@ -1180,4 +1239,60 @@ function updateTaskStatusDisplay(statusData) {
     } else {
         $("#registration-details").hide();
     }
+}
+
+// 绑定排序事件
+function bindSortEvents() {
+    // 字段排序变化
+    $("#sort-field").change(function() {
+        currentSortField = $(this).val();
+        loadAccounts(1, itemsPerPage, $("#search-input").val(), currentSortField, currentSortOrder);
+    });
+    
+    // 排序方向变化
+    $("#sort-order").change(function() {
+        currentSortOrder = $(this).val();
+        loadAccounts(1, itemsPerPage, $("#search-input").val(), currentSortField, currentSortOrder);
+    });
+}
+
+// 修改表头排序配置，移除ID相关设置
+function addTableHeaderSorting() {
+    // 可排序的列 - 移除ID相关配置
+    const sortableColumns = {
+        'th-email': 'email',
+        'th-date': 'created_at',
+        'th-usage': 'usage_limit'
+    };
+    
+    // 为表头添加排序类和点击事件
+    Object.keys(sortableColumns).forEach(thId => {
+        const $th = $(`#${thId}`);
+        $th.addClass('sortable');
+        
+        // 设置初始排序指示
+        if (sortableColumns[thId] === currentSortField) {
+            $th.addClass(currentSortOrder);
+        }
+        
+        $th.click(function() {
+            const field = sortableColumns[thId];
+            
+            // 如果点击当前排序列，切换排序方向
+            if (field === currentSortField) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                // 否则，切换排序列并设置默认为降序
+                currentSortField = field;
+                currentSortOrder = 'desc';
+            }
+            
+            // 更新排序控件
+            $("#sort-field").val(currentSortField);
+            $("#sort-order").val(currentSortOrder);
+            
+            // 重新加载数据
+            loadAccounts(1, itemsPerPage, $("#search-input").val(), currentSortField, currentSortOrder);
+        });
+    });
 }
