@@ -1100,11 +1100,6 @@ function deleteAccount(email, id, hardDelete = true) {
     });
 }
 
-// 添加强制刷新函数
-function forceRefreshData() {
-    window.forceRefresh = true;
-    loadAccounts(1, itemsPerPage);
-}
 
 // 完全重构额度显示函数，精确匹配参考代码
 function renderUsageProgress(usageLimit) {

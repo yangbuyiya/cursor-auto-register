@@ -2,7 +2,7 @@ import sys
 import psutil
 import time
 import random
-from logger import info, warning
+from logger import info, warning, error
 import traceback
 from config import (
     LOGIN_URL,
@@ -154,6 +154,19 @@ def sign_up_account(browser, tab, account_info):
     if EMAIL_TYPE == "zmail":
         EmailVerificationHandler.create_zmail_email(account_info)
     tab.get(SIGN_UP_URL)
+
+    time.sleep(random.uniform(1, 3))
+
+    wait_count = 1
+    while True:
+        if tab.ele("@name=first_name"):
+            break
+        if tab.ele("@name=cf-turnstile-response"):
+            error("开屏就是检测啊，大佬你的IP或UA需要换一下了啊，有问题了...要等一下")
+        time.sleep(random.uniform(3, 5))
+        info(f'第 {wait_count} 次等待...')
+        wait_count += 1
+
     try:
         if tab.ele("@name=first_name"):
             info("=============正在填写个人信息=============")
@@ -171,7 +184,14 @@ def sign_up_account(browser, tab, account_info):
 
             info("=============提交个人信息=============")
             tab.actions.click("@type=submit")
-
+            time.sleep(random.uniform(0.2, 1))
+            if (
+                    tab.ele("verify the user is human. Please try again.")
+                    or tab.ele("Can't verify the user is human. Please try again.")
+                    or tab.ele("Can‘t verify the user is human. Please try again.")
+            ):
+                info("检测到turnstile验证失败，（IP问题、UA问题、域名问题）...正在重试...")
+                return "EMAIL_USED"
     except Exception as e:
         info(f"填写个人信息失败: {str(e)}")
         return "ERROR"

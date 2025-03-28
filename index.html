@@ -339,7 +339,7 @@
                                                 <label class="form-check-label"
                                                     for="dynamic-useragent">启用动态User-Agent</label>
                                             </div>
-                                            <small class="text-muted">启用后将从预设的UA列表中随机选择，无需手动配置User-Agent</small>
+                                            <small class="text-muted">（建议不要）启用后将从预设的UA列表中随机选择，无需手动配置User-Agent</small>
                                         </div>
                                         <div class="mb-3" id="useragent-input-container">
                                             <label for="browser-useragent" class="form-label">浏览器User-Agent</label>
@@ -349,7 +349,7 @@
                                         <div class="mb-3">
                                             <label for="browser-path" class="form-label">浏览器路径 (可选)</label>
                                             <input type="text" id="browser-path" class="form-control" disabled>
-                                            <small class="text-muted">Windows下浏览器可执行文件的完整路径</small>
+                                            <small class="text-muted">Windows下浏览器可执行文件的完整路径(示例：C:\Users\Administrator\AppData\Local\Google\Chrome\Bin\chrome.exe)</small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="accounts-limit" class="form-label">最大账号数量</label>
@@ -377,7 +377,7 @@
                                         <div id="tempemail-fields">
                                             <div class="mb-3">
                                                 <label for="email-username" class="form-label">临时邮箱用户名</label>
-                                                <input type="text" id="email-username" class="form-control"
+                                                <input type="text" id="email-username" class="form-control" disabled
                                                     placeholder="加载中...">
                                                 <small class="text-muted">用于接收验证码的临时邮箱用户名（不需要输入@及后面的部分）</small>
                                             </div>
@@ -415,7 +415,7 @@
                                         <div class="mb-3">
                                             <label for="cursor-path" class="form-label">Cursor路径 (可选)</label>
                                             <input type="text" id="cursor-path" class="form-control" disabled>
-                                            <small class="text-muted">Cursor安装目录的完整路径</small>
+                                            <small class="text-muted">Cursor安装目录的完整路径(示例：D:\devtools\cursor)</small>
                                         </div>
                                     </div>
                                     <!-- 在系统配置表单中添加代理设置部分 -->

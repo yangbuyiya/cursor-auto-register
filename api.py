@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Query, File, UploadFile
+from fastapi import FastAPI, HTTPException, status, UploadFile
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy import select, func, delete, desc
 from pathlib import Path
 from database import get_session, AccountModel, init_db
@@ -12,7 +12,6 @@ import os
 import traceback
 from fastapi.responses import JSONResponse, FileResponse, Response
 from cursor_pro_keep_alive import main as register_account
-from browser_utils import BrowserManager
 from logger import info, error
 from contextlib import asynccontextmanager
 from tokenManager.cursor import Cursor  # 添加这个导入
@@ -28,8 +27,6 @@ from config import (
 )
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-import sys
-import psutil
 import json
 import time
 
@@ -57,10 +54,10 @@ background_tasks = {"registration_task": None}
 async def lifespan(app: FastAPI):
     # 启动时初始化数据库
     await init_db()
-    info("数据库已初始化")
+    info(f'服务已启动! \n 首页地址：http://127.0.0.1:{API_PORT}/')
     yield
     # 关闭时的清理操作
-    info("应用程序关闭")
+    info("应用程序已关闭!")
 
 
 app = FastAPI(
@@ -69,7 +66,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    # lifespan=lifespan,
+    lifespan=lifespan,
     debug=API_DEBUG,
 )
 
@@ -85,13 +82,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# 使用startup事件初始化数据库
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
-    info("数据库已初始化")
-
 
 class Account(BaseModel):
     email: str
@@ -779,9 +769,7 @@ async def get_registration_status():
         else:
             status_info["status_message"] = "注册任务未运行"
 
-        info(
-            f"请求注册状态 (当前账号数: {count}, 活跃账号数: {active_count}, 状态: {task_status})"
-        )
+        # info(f"请求注册状态 (当前账号数: {count}, 活跃账号数: {active_count}, 状态: {task_status})")
         return status_info
 
     except Exception as e:
@@ -1375,7 +1363,7 @@ if __name__ == "__main__":
         port=API_PORT,
         reload=API_DEBUG,
         access_log=True,
-        log_level="info",
+        log_level="error",
         workers=API_WORKERS,
         loop="asyncio",  # Windows下使用默认的asyncio
     )
