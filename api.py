@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends, Query, File, UploadFile
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy import select, func, delete, desc
@@ -10,7 +10,7 @@ import uvicorn
 import asyncio
 import os
 import traceback
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, Response
 from cursor_pro_keep_alive import main as register_account
 from browser_utils import BrowserManager
 from logger import info, error
@@ -31,6 +31,7 @@ from dotenv import load_dotenv
 import sys
 import psutil
 import json
+import time
 
 # 全局状态追踪
 registration_status = {
@@ -1217,6 +1218,7 @@ async def get_config():
             "MAX_ACCOUNTS": int(os.getenv("MAX_ACCOUNTS", "10")),
             "EMAIL_DOMAINS": os.getenv("EMAIL_DOMAINS", ""),
             "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME", ""),
+            "EMAIL_DOMAIN": os.getenv("EMAIL_DOMAIN", ""),
             "EMAIL_PIN": os.getenv("EMAIL_PIN", ""),
             "BROWSER_PATH": os.getenv("BROWSER_PATH", ""),
             "CURSOR_PATH": os.getenv("CURSOR_PATH", ""),

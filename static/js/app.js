@@ -1179,6 +1179,22 @@ function loadConfig() {
                 $("#email-pin").val(config.EMAIL_PIN);
                 $("#browser-path").val(config.BROWSER_PATH || '');
                 $("#cursor-path").val(config.CURSOR_PATH || '');
+
+                if (config.EMAIL_DOMAIN) {
+                    // 获取第一个域名作为示例
+                    const firstDomain = config.EMAIL_DOMAIN;
+                    // 更新输入框提示
+                    $('#email-username').attr('placeholder', `仅输入用户名部分，例如：ddcat28（完整地址将是 ddcat28@${firstDomain}）`);
+                    // 添加域名显示标签
+                    if (!$('#email-domain-suffix').length) {
+                        $('#email-username').after(`<span id="email-domain-suffix" class="input-group-text bg-light">@${firstDomain}</span>`);
+                        // 将输入框和域名标签包装在input-group中
+                        $('#email-username, #email-domain-suffix').wrapAll('<div class="input-group"></div>');
+                    } else {
+                        $('#email-domain-suffix').text(`@${firstDomain}`);
+                    }
+                }
+                
                 hideLoading();
             } else {
                 showAlert('danger', '加载配置失败: ' + response.message);
