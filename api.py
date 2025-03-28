@@ -1,9 +1,9 @@
-from fastapi import FastAPI, HTTPException, status, UploadFile
+from fastapi import FastAPI, HTTPException, status, UploadFile, Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import select, func, delete, desc
 from pathlib import Path
-from database import get_session, AccountModel, init_db
+from database import get_session, AccountModel, AccountUsageRecordModel, init_db
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import uvicorn
@@ -1103,7 +1103,7 @@ async def import_accounts(file: UploadFile):
 
 # 添加"使用Token"功能
 @app.post("/account/use-token/{id}", tags=["Accounts"])
-async def use_account_token(id: int):
+async def use_account_token(id: int, request: Request):
     """使用指定账号的Token更新Cursor认证"""
     try:
         async with get_session() as session:
@@ -1130,6 +1130,25 @@ async def use_account_token(id: int):
 
             resetter = CursorShadowPatcher()
             patch_success = resetter.reset_machine_ids()
+            
+            # 记录使用记录
+            if success:
+                # 获取请求客户端IP
+                client_ip = request.client.host
+                # 获取用户代理
+                user_agent = request.headers.get("User-Agent", "")
+                
+                # 创建使用记录
+                usage_record = AccountUsageRecordModel(
+                    id=int(time.time() * 1000),  # 使用毫秒级时间戳作为ID
+                    account_id=id,
+                    email=account.email,
+                    ip=client_ip,
+                    user_agent=user_agent,
+                    created_at=datetime.now().isoformat()
+                )
+                session.add(usage_record)
+                await session.commit()
 
             if success and patch_success:
                 return {
@@ -1148,6 +1167,52 @@ async def use_account_token(id: int):
         error(f"使用账号Token失败: {str(e)}")
         error(traceback.format_exc())
         return {"success": False, "message": f"使用Token失败: {str(e)}"}
+
+# 添加获取账号使用记录接口
+@app.get("/account/{id}/usage-records", tags=["Accounts"])
+async def get_account_usage_records(id: int):
+    """获取指定账号的使用记录"""
+    try:
+        async with get_session() as session:
+            # 通过ID查询账号
+            result = await session.execute(
+                select(AccountModel).where(AccountModel.id == id)
+            )
+            account = result.scalar_one_or_none()
+
+            if not account:
+                return {"success": False, "message": f"ID为 {id} 的账号不存在"}
+            
+            # 查询使用记录
+            result = await session.execute(
+                select(AccountUsageRecordModel)
+                .where(AccountUsageRecordModel.account_id == id)
+                .order_by(desc(AccountUsageRecordModel.created_at))
+            )
+            
+            records = result.scalars().all()
+            
+            # 转换记录为字典列表
+            records_list = []
+            for record in records:
+                records_list.append({
+                    "id": record.id,
+                    "account_id": record.account_id,
+                    "email": record.email,
+                    "ip": record.ip,
+                    "user_agent": record.user_agent,
+                    "created_at": record.created_at
+                })
+            
+            return {
+                "success": True,
+                "records": records_list
+            }
+
+    except Exception as e:
+        error(f"获取账号使用记录失败: {str(e)}")
+        error(traceback.format_exc())
+        return {"success": False, "message": f"获取账号使用记录失败: {str(e)}"}
 
 # 添加"重置设备id"功能
 @app.get("/reset-machine", tags=["System"])

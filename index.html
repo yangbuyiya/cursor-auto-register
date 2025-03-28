@@ -589,6 +589,44 @@
         </div>
     </div>
 
+    <!-- 账号使用记录模态框 -->
+    <div class="modal fade" id="usageRecordModal" tabindex="-1" aria-labelledby="usageRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="usageRecordModalLabel">账号使用记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>账号邮箱:</strong> <span id="recordEmail"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>使用时间</th>
+                                    <th>使用者IP</th>
+                                    <th>使用者UA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usageRecordBody">
+                                <!-- 记录将被动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-records" class="text-center p-4" style="display: none;">
+                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
+                        <p>暂无使用记录</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 自动刷新指示器 -->
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 5">
         <div class="d-flex align-items-center small text-muted">
