@@ -1175,6 +1175,7 @@ function loadConfig() {
                 
                 $("#browser-useragent").val(config.BROWSER_USER_AGENT);
                 $("#accounts-limit").val(config.MAX_ACCOUNTS);
+                $("#captcha-method").val(config.EMAIL_CODE_TYPE || "API");
                 $("#email-domains").val(config.EMAIL_DOMAINS);
                 $("#email-username").val(config.EMAIL_USERNAME);
                 $("#email-pin").val(config.EMAIL_PIN);
@@ -1242,6 +1243,7 @@ function saveConfig() {
         DYNAMIC_USERAGENT: isDynamicUA,
         BROWSER_USER_AGENT: isDynamicUA ? "" : $("#browser-useragent").val(),
         MAX_ACCOUNTS: parseInt($("#accounts-limit").val()),
+        EMAIL_CODE_TYPE: $("#captcha-method").val(),
         EMAIL_DOMAINS: $("#email-domains").val(),
         EMAIL_USERNAME: $("#email-username").val(),
         EMAIL_PIN: $("#email-pin").val(),

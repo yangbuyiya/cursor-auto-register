@@ -10,7 +10,8 @@ from config import (
     SETTINGS_URL,
     EMAIL_DOMAINS,
     REGISTRATION_MAX_RETRIES,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    EMAIL_CODE_TYPE
 )
 
 
@@ -422,6 +423,16 @@ def main():
     current_retry = 0
 
     try:
+        email_handler = EmailVerificationHandler()
+        if email_handler.check():
+            info('邮箱服务连接正常，开始注册!')
+        else:
+            if EMAIL_CODE_TYPE == "API":
+                error('邮箱服务连接失败，并且验证码为API获取，结束注册!')
+                return
+            else:
+                info('邮箱服务连接失败，并且验证码为手动输入，等待输入验证码...')
+
         email_generator = EmailGenerator()
         browser_manager = BrowserManager()
         browser = browser_manager.init_browser()

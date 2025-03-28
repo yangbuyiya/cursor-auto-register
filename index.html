@@ -357,6 +357,16 @@
                                                 disabled>
                                             <small class="text-muted">系统允许创建的最大账号数量</small>
                                         </div>
+                                        
+                                        <!-- 验证码获取方式 -->
+                                        <div class="mb-3">
+                                            <label for="captcha-method" class="form-label">验证码获取方式</label>
+                                            <select id="captcha-method" class="form-control" disabled>
+                                                <option value="API">API自动获取</option>
+                                                <option value="INPUT">控制台手动输入</option>
+                                            </select>
+                                            <small class="text-muted">选择验证码的获取方式：API自动获取或通过控制台手动输入</small>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">

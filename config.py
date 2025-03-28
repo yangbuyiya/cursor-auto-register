@@ -53,6 +53,8 @@ SIGN_UP_URL = "https://authenticator.cursor.sh/sign-up"
 SETTINGS_URL = "https://www.cursor.com/settings"
 
 # ===== 邮箱配置 =====
+# 邮箱验证码获取方式
+EMAIL_CODE_TYPE = os.getenv("EMAIL_CODE_TYPE", "API")
 # 邮箱类型
 EMAIL_TYPE = os.getenv("EMAIL_TYPE", "tempemail")
 # 临时邮箱用户名

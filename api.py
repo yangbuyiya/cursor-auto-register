@@ -1212,6 +1212,7 @@ async def get_config():
             "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME", ""),
             "EMAIL_DOMAIN": os.getenv("EMAIL_DOMAIN", ""),
             "EMAIL_PIN": os.getenv("EMAIL_PIN", ""),
+            "EMAIL_CODE_TYPE": os.getenv("EMAIL_CODE_TYPE", "API"),
             "BROWSER_PATH": os.getenv("BROWSER_PATH", ""),
             "CURSOR_PATH": os.getenv("CURSOR_PATH", ""),
             "DYNAMIC_USERAGENT": os.getenv("DYNAMIC_USERAGENT", "False").lower() == "true",
@@ -1255,6 +1256,7 @@ async def update_config(config: ConfigModel):
             "EMAIL_DOMAINS": config.EMAIL_DOMAINS,
             "EMAIL_USERNAME": config.EMAIL_USERNAME,
             "EMAIL_PIN": config.EMAIL_PIN,
+            "EMAIL_CODE_TYPE": config.EMAIL_CODE_TYPE,
             # 添加代理配置
             "USE_PROXY": str(config.USE_PROXY),
             "PROXY_TYPE": config.PROXY_TYPE,

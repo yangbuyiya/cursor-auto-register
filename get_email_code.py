@@ -11,7 +11,8 @@ from config import (
     EMAIL_TYPE,
     EMAIL_PROXY_ADDRESS,
     EMAIL_PROXY_ENABLED,
-    EMAIL_API
+    EMAIL_API,
+    EMAIL_CODE_TYPE
 )
 
 
@@ -32,6 +33,22 @@ class EmailVerificationHandler:
             info(
                 f"初始化邮箱验证器成功: {self.emailApi}"
             )
+    def check(self):
+        mail_list_url = f"https://tempmail.plus/api/mails?email={self.username}{self.emailExtension}&limit=20&epin={self.pin}"
+        try:
+            mail_list_response = self.session.get(mail_list_url, timeout=10)  # 添加超时参数
+            mail_list_data = mail_list_response.json()
+            time.sleep(0.5)
+            if not mail_list_data.get("result"):
+                return True
+        except requests.exceptions.Timeout:
+            error("获取邮件列表超时")
+        except requests.exceptions.ConnectionError:
+            error("获取邮件列表连接错误")
+        except Exception as e:
+            error(f"获取邮件列表发生错误: {str(e)}")
+        return False
+
     def get_verification_code(
         self, source_email=None, max_retries=None, wait_time=None
     ):
@@ -45,6 +62,10 @@ class EmailVerificationHandler:
         Returns:
             str: 验证码或None
         """
+        # 如果邮箱验证码获取方式为输入，则直接返回输入的验证码
+        if EMAIL_CODE_TYPE == "INPUT":
+            return self.prompt_manual_code()
+            
         max_retries = max_retries or EMAIL_VERIFICATION_RETRIES
         wait_time = wait_time or EMAIL_VERIFICATION_WAIT
         info(f"开始获取邮箱验证码=>最大重试次数:{max_retries}, 等待时间:{wait_time}")
@@ -72,6 +93,12 @@ class EmailVerificationHandler:
         return None
 
     # 手动输入验证码
+    def prompt_manual_code(self):
+        """手动输入验证码"""
+        info("自动获取验证码失败，开始手动输入验证码。")
+        code = input("输入6位数字验证码: ").strip()
+        return code
+
     def get_tempmail_email_code(self, source_email=None):
         info("开始获取邮件列表")
         # 获取邮件列表
