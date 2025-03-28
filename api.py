@@ -1031,8 +1031,8 @@ async def export_accounts():
         )
 
 # 添加导入账号列表功能
-# @app.post("/accounts/import", tags=["Accounts"])
-# async def import_accounts(file: UploadFile):
+@app.post("/accounts/import", tags=["Accounts"])
+async def import_accounts(file: UploadFile):
     """从JSON文件导入账号"""
     try:
         # 读取上传的文件内容
