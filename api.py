@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import sys
 import psutil
+import json
 
 # 全局状态追踪
 registration_status = {
@@ -987,6 +988,129 @@ async def delete_account_by_id(id: int, hard_delete: bool = False):
             detail=f"删除账号失败: {str(e)}",
         )
 
+# 添加导出账号列表功能
+@app.get("/accounts/export", tags=["Accounts"])
+async def export_accounts():
+    """导出所有账号为JSON文件"""
+    try:
+        async with get_session() as session:
+            query = select(AccountModel).order_by(desc(AccountModel.created_at))
+            result = await session.execute(query)
+            accounts = result.scalars().all()
+            
+            # 转换为可序列化的数据
+            accounts_data = []
+            for account in accounts:
+                account_dict = {
+                    "id": account.id,
+                    "email": account.email,
+                    "password": account.password,
+                    "token": account.token,
+                    "user": account.user,
+                    "usage_limit": account.usage_limit,
+                    "created_at": account.created_at,
+                    "status": account.status
+                }
+                accounts_data.append(account_dict)
+            
+            # 创建响应
+            content = json.dumps(accounts_data, ensure_ascii=False, indent=2)
+            response = Response(content=content)
+            response.headers["Content-Disposition"] = "attachment; filename=cursor_accounts.json"
+            response.headers["Content-Type"] = "application/json"
+            
+            return response
+            
+    except Exception as e:
+        error(f"导出账号失败: {str(e)}")
+        error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"导出账号失败: {str(e)}",
+        )
+
+# 添加导入账号列表功能
+# @app.post("/accounts/import", tags=["Accounts"])
+# async def import_accounts(file: UploadFile):
+    """从JSON文件导入账号"""
+    try:
+        # 读取上传的文件内容
+        content = await file.read()
+        
+        # 解析JSON数据
+        try:
+            accounts_data = json.loads(content.decode("utf-8"))
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="无效的JSON文件格式",
+            )
+        
+        # 验证数据结构
+        if not isinstance(accounts_data, list):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="JSON数据必须是账号对象的数组",
+            )
+            
+        # 导入计数器
+        imported = 0
+        updated = 0
+        skipped = 0
+        
+        async with get_session() as session:
+            for account_data in accounts_data:
+                # 提取必要字段，提供默认值
+                email = account_data.get("email")
+                if not email:
+                    skipped += 1
+                    continue
+                    
+                # 检查账号是否已存在
+                query = select(AccountModel).where(AccountModel.email == email)
+                result = await session.execute(query)
+                existing_account = result.scalar_one_or_none()
+                
+                if existing_account:
+                    # 更新现有账号
+                    existing_account.password = account_data.get("password", existing_account.password)
+                    existing_account.token = account_data.get("token", existing_account.token)
+                    existing_account.user = account_data.get("user", existing_account.user)
+                    existing_account.usage_limit = account_data.get("usage_limit", existing_account.usage_limit)
+                    existing_account.status = account_data.get("status", existing_account.status)
+                    updated += 1
+                else:
+                    # 创建新账号
+                    new_account = AccountModel(
+                        id=account_data.get("id", int(time.time() * 1000)),
+                        email=email,
+                        password=account_data.get("password", ""),
+                        token=account_data.get("token", ""),
+                        user=account_data.get("user", ""),
+                        usage_limit=account_data.get("usage_limit", ""),
+                        created_at=account_data.get("created_at", datetime.now().strftime("%Y-%m-%d %H:%M")),
+                        status=account_data.get("status", "active")
+                    )
+                    session.add(new_account)
+                    imported += 1
+                    
+            # 提交所有更改
+            await session.commit()
+            
+        return {
+            "success": True,
+            "message": f"导入完成: 新增 {imported} 个账号, 更新 {updated} 个账号, 跳过 {skipped} 个无效记录",
+        }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        error(f"导入账号失败: {str(e)}")
+        error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"导入账号失败: {str(e)}",
+        )
 
 # 添加"使用Token"功能
 @app.post("/account/use-token/{id}", tags=["Accounts"])
@@ -1070,13 +1194,13 @@ class ConfigModel(BaseModel):
     EMAIL_PIN: str
     BROWSER_PATH: Optional[str] = None
     CURSOR_PATH: Optional[str] = None
-    USE_PROXY: bool = False
-    PROXY_TYPE: str = "http"
-    PROXY_HOST: str = ""
-    PROXY_PORT: str = ""
-    PROXY_TIMEOUT: int = 10
-    PROXY_USERNAME: str = ""
-    PROXY_PASSWORD: str = ""
+    USE_PROXY: Optional[bool] = False
+    PROXY_TYPE: Optional[str] = None
+    PROXY_HOST: Optional[str] = None
+    PROXY_PORT: Optional[str] = None
+    PROXY_TIMEOUT: Optional[int] = None
+    PROXY_USERNAME: Optional[str] = None
+    PROXY_PASSWORD: Optional[str] = None
 
 
 # 获取配置端点

@@ -107,6 +107,58 @@ function bindEventHandlers() {
             }
         );
     });
+
+    // 导出账号按钮点击事件
+    $("#export-accounts-btn").click(function() {
+        exportAccounts();
+    });
+    
+    // 导入账号按钮点击事件
+    $("#import-accounts-btn").click(function() {
+        $("#import-file-input").click();
+    });
+    
+    // 导入文件选择事件
+    $("#import-file-input").change(function(e) {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            
+            // 读取文件预览内容
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    
+                    if (Array.isArray(data)) {
+                        // 显示导入确认对话框
+                        $("#import-count").text(data.length);
+                        const importModal = new bootstrap.Modal(document.getElementById('import-confirm-modal'));
+                        importModal.show();
+                        
+                        // 存储文件引用，用于后续导入
+                        window.fileToImport = file;
+                    } else {
+                        showAlert('danger', '无效的数据格式：必须是账号对象的数组');
+                    }
+                } catch (err) {
+                    showAlert('danger', '解析JSON文件失败：' + err.message);
+                }
+                
+                // 重置文件输入，允许再次选择同一文件
+                $("#import-file-input").val('');
+            };
+            
+            reader.readAsText(file);
+        }
+    });
+    
+    // 确认导入按钮点击事件
+    $("#confirm-import-btn").click(function() {
+        if (window.fileToImport) {
+            importAccounts(window.fileToImport);
+            bootstrap.Modal.getInstance(document.getElementById('import-confirm-modal')).hide();
+        }
+    });
 }
 
 // 全局变量
@@ -1152,10 +1204,17 @@ function toggleProxySettings() {
 // 添加配置保存回调，支持重启
 function saveConfig() {
     showLoading();
-    
+    const isDynamicUA = $(this).prop('checked');
     const configData = {
-        // 现有字段...
-        
+        BROWSER_HEADLESS: $("#browser-headless").val() === 'true',
+        DYNAMIC_USERAGENT: isDynamicUA,
+        BROWSER_USER_AGENT: isDynamicUA ? "" : $("#browser-useragent").val(),
+        MAX_ACCOUNTS: parseInt($("#accounts-limit").val()),
+        EMAIL_DOMAINS: $("#email-domains").val(),
+        EMAIL_USERNAME: $("#email-username").val(),
+        EMAIL_PIN: $("#email-pin").val(),
+        BROWSER_PATH: $("#browser-path").val(),
+        CURSOR_PATH: $("#cursor-path").val(),
         // 代理设置（确保这些字段存在）
         USE_PROXY: $("#use-proxy").is(":checked"),
         PROXY_TYPE: $("#proxy-type").val(),
@@ -1571,6 +1630,56 @@ function resetMachineId() {
         error: function(xhr) {
             hideLoading();
             showAlert('danger', '重置机器ID失败: ' + (xhr.responseJSON?.message || xhr.statusText || '未知错误'));
+        }
+    });
+}
+
+// 导出账号函数
+function exportAccounts() {
+    showLoading();
+    
+    // 直接使用浏览器下载功能
+    const downloadLink = document.createElement('a');
+    downloadLink.href = '/accounts/export';
+    downloadLink.download = 'cursor_accounts.json';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    setTimeout(() => {
+        hideLoading();
+        showAlert('success', '账号导出请求已发送，文件将自动下载');
+    }, 1000);
+}
+
+// 导入账号函数
+function importAccounts(file) {
+    showLoading();
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 发送导入请求
+    $.ajax({
+        url: '/accounts/import',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            hideLoading();
+            if (response.success) {
+                showAlert('success', response.message);
+                
+                // 刷新账号列表
+                loadAccounts(1, itemsPerPage);
+            } else {
+                showAlert('danger', '导入账号失败: ' + response.message);
+            }
+        },
+        error: function(xhr) {
+            hideLoading();
+            showAlert('danger', '导入账号失败: ' + (xhr.responseJSON?.detail || xhr.statusText));
         }
     });
 }
