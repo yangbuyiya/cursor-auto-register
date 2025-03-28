@@ -167,9 +167,10 @@ let filteredAccounts = [];
 let refreshTimer;
 
 // 显示加载遮罩
-function showLoading() {
+function showLoading(message = '加载中，请稍候...') {
     const loadingOverlay = document.getElementById('loading-overlay');
     loadingOverlay.classList.add('show');
+    $("#loading-overlay p").text(message);
 }
 
 // 隐藏加载遮罩
@@ -1308,60 +1309,34 @@ function showConfirmDialog(title, message, confirmCallback) {
     });
 }
 
-// 添加重启服务函数
+// 更新重启服务函数
 function restartService() {
-    showLoading();
-    const loadingText = "服务正在重启，请稍候...";
-    $("#loading-overlay p").text(loadingText);
+    showLoading('服务正在重新配置，请稍候...');
     
     $.ajax({
         url: '/restart',
         method: 'POST',
         success: function(response) {
             if (response.success) {
-                // 设置一个定时器，每3秒尝试检查服务是否已重启
-                let checkCount = 0;
-                const maxChecks = 10; // 最多等待30秒
+                // 显示成功消息
+                hideLoading();
+                showAlert('success', response.message || '服务配置已更新，正在刷新页面...');
                 
-                const checkInterval = setInterval(function() {
-                    checkCount++;
-                    if (checkCount > maxChecks) {
-                        clearInterval(checkInterval);
-                        hideLoading();
-                        showAlert('warning', '服务重启时间过长，请手动刷新页面');
-                        return;
-                    }
-                    
-                    // 尝试请求API检查服务是否可用
-                    $.ajax({
-                        url: '/accounts?page=1&per_page=1',
-                        method: 'GET',
-                        timeout: 2000,
-                        success: function() {
-                            clearInterval(checkInterval);
-                            hideLoading();
-                            showAlert('success', '服务已成功重启');
-                            // 重新加载页面以获取最新配置
-                            setTimeout(function() {
-                                window.location.reload();
-                            }, 1000);
-                        },
-                        error: function() {
-                            // 服务未就绪，继续等待
-                            console.log('等待服务重启...');
-                        }
-                    });
+                // 延迟3秒后刷新页面
+                setTimeout(function() {
+                    window.location.reload();
                 }, 3000);
             } else {
                 hideLoading();
-                showAlert('danger', '重启服务失败: ' + response.message);
+                showAlert('danger', '重启服务失败: ' + (response.message || '未知错误'));
             }
         },
-        error: function() {
-            // 请求失败可能意味着服务已开始重启
-            // 设置检查间隔
+        error: function(xhr) {
+            hideLoading();
+            showAlert('danger', '重启服务请求失败，请手动刷新页面');
+            
+            // 延迟5秒后尝试刷新页面
             setTimeout(function() {
-                // 尝试重新加载页面
                 window.location.reload();
             }, 5000);
         }

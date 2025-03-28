@@ -1317,38 +1317,47 @@ async def update_config(config: ConfigModel):
         return {"success": False, "message": f"更新配置失败: {str(e)}"}
 
 
-# 添加重启API端点
+# 优化重启API功能，解决卡住问题
 @app.post("/restart", tags=["System"])
 async def restart_service():
     """重启应用服务"""
     try:
         info("收到重启服务请求")
         
-        # 创建一个子进程来执行重启
-        if sys.platform == 'win32':
-            cmd = 'powershell -Command "Start-Sleep -s 2; Start-Process python -ArgumentList \'api.py\'"'
+        # 使用更简单的重启方法 - 通过reload环境变量触发uvicorn重载
+        # 1. 修改.env文件，添加/更新一个时间戳，触发热重载
+        env_path = os.path.join(os.getcwd(), ".env")
+        timestamp = str(int(time.time()))
+        
+        # 读取现有.env文件
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                env_lines = f.read().splitlines()
         else:
-            cmd = 'bash -c "sleep 2 && nohup python api.py > /dev/null 2>&1 &"'
+            env_lines = []
             
-        # 启动新进程
-        import subprocess
-        subprocess.Popen(cmd, shell=True)
-        
-        # 准备在2秒后关闭当前进程
-        async def shutdown():
-            await asyncio.sleep(2)
-            info("执行服务重启...")
-            for proc in psutil.process_children(psutil.Process()):
-                try:
-                    proc.terminate()
-                except:
-                    pass
-            os._exit(0)  # 强制退出当前进程
+        # 更新或添加RESTART_TIMESTAMP变量
+        timestamp_found = False
+        for i, line in enumerate(env_lines):
+            if line.startswith("RESTART_TIMESTAMP="):
+                env_lines[i] = f"RESTART_TIMESTAMP={timestamp}"
+                timestamp_found = True
+                break
+                
+        if not timestamp_found:
+            env_lines.append(f"RESTART_TIMESTAMP={timestamp}")
             
-        # 启动关闭任务
-        asyncio.create_task(shutdown())
+        # 写回.env文件
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(env_lines))
+            
+        info(f"已更新重启时间戳: {timestamp}")
         
-        return {"success": True, "message": "服务正在重启，请稍候..."}
+        # 仅提示用户手动刷新页面
+        return {
+            "success": True, 
+            "message": "配置已更新，请手动刷新页面以应用更改。"
+        }
     except Exception as e:
         error(f"重启服务失败: {str(e)}")
         error(traceback.format_exc())
