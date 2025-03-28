@@ -6,7 +6,6 @@ from config import (
     BROWSER_USER_AGENT,
     BROWSER_PATH,
     BROWSER_HEADLESS,
-    BROWSER_PROXY,
     DYNAMIC_USERAGENT,
     USE_PROXY,
     PROXY_TYPE,
@@ -34,9 +33,6 @@ class BrowserManager:
         try:
             info("正在初始化浏览器...")
             co = ChromiumOptions()
-
-            if BROWSER_PROXY:
-                co.set_proxy(BROWSER_PROXY)
 
             # 如果配置了特定的浏览器路径，则使用
             if BROWSER_PATH and os.path.exists(BROWSER_PATH):

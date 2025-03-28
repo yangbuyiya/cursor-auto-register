@@ -28,9 +28,13 @@ TOTAL_USAGE = 0
 
 def handle_turnstile(tab):
     info("=============正在检测 Turnstile 验证=============")
+    max_count = 5
     try:
         count = 1
         while True:
+            if count > max_count:
+                error("Turnstile 验证次数超过最大限制，退出")
+                return False
             info(f"正在进行 Turnstile 第 {count} 次验证中...")
             try:
                 # 检查页面状态，但不直接返回，先检查是否有Turnstile验证需要处理
