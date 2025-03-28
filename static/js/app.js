@@ -131,6 +131,21 @@ function loadAccounts(page = 1, perPage = itemsPerPage, search = '', sortField =
                 currentSortField = response.sort.field;
                 currentSortOrder = response.sort.order;
                 
+                // 新增：更新账号统计信息
+                const totalAccounts = response.pagination.total_count || 0;
+                const maxAccounts = parseInt($("#max-accounts").text()) || 10;
+                const remainingSlots = Math.max(0, maxAccounts - totalAccounts);
+                
+                $("#current-count").text(totalAccounts);
+                $("#remaining-slots").text(`剩余: ${remainingSlots}`);
+                
+                // 计算使用百分比
+                const usagePercent = maxAccounts > 0 ? Math.round((totalAccounts / maxAccounts) * 100) : 0;
+                
+                // 更新进度条
+                $(".battery-progress").attr("data-percent", usagePercent);
+                $(".battery-percent").text(`${usagePercent}%`);
+                
                 // 更新排序控件
                 $("#sort-field").val(currentSortField);
                 $("#sort-order").val(currentSortOrder);
@@ -265,8 +280,6 @@ function updateAccountsTable(accounts) {
     const accountsBody = $('#accounts-tbody');
     accountsBody.empty();
     
-    console.log(`准备渲染账号表格，共${accounts.length}条数据`);
-    
     if (accounts.length === 0) {
         // 添加空状态提示
         accountsBody.html(`
@@ -284,8 +297,6 @@ function updateAccountsTable(accounts) {
     
     // 渲染每行数据
     accounts.forEach((account, index) => {
-        console.log(`渲染账号: ${account.email}`);
-        
         // 完整的行模板，包含所有单元格内容
         const row = `
             <tr id="account-row-${account.id}" data-status="${account.status}" 
@@ -351,8 +362,6 @@ function renderAccountsTable() {
     const accountsBody = $('#accounts-tbody');
     accountsBody.empty();
     
-    console.log(`准备渲染账号表格，共${filteredAccounts.length}条数据`);
-    
     if (filteredAccounts.length === 0) {
         // 添加空状态提示
         accountsBody.html(`
@@ -377,8 +386,6 @@ function renderAccountsTable() {
     
     // 渲染每行数据
     currentPageData.forEach((account, index) => {
-        console.log(`渲染账号: ${account.email}`);
-        
         // 完整的行模板，包含所有单元格内容
         const row = `
             <tr id="account-row-${account.id}" data-status="${account.status}" 
@@ -1174,27 +1181,34 @@ $("#dynamic-useragent").change(function() {
     }
 });
 
-// 修改任务状态显示函数，删除与暂停/恢复相关逻辑
+// 修改任务状态显示函数，保留状态处理逻辑
 function updateTaskStatusDisplay(statusData) {
-    // 更新状态徽章
+    // 获取UI元素引用
     const statusBadge = $("#registration-status");
     const taskStatusText = $("#task-status-text");
     const taskIcon = $("#task-status i");
     
-    // 更新账号使用情况
-    $("#current-count").text(statusData.current_count);
-    $("#max-accounts").text(statusData.max_accounts);
-    $("#remaining-slots").text(`剩余: ${statusData.remaining_slots}`);
+    // 直接使用服务器返回的统计数据
+    const stats = statusData;
     
-    // 计算使用百分比并更新电池进度条
-    const usagePercent = Math.floor((statusData.current_count / statusData.max_accounts) * 100);
+    // 计算实际使用的账号数量
+    const usedCount = stats.active_count || 0;
+    const maxAccounts = stats.max_accounts || 10; 
+    const remainingSlots = Math.max(0, maxAccounts - usedCount);
+    // 更新显示
+    $("#current-count").text(usedCount);
+    $("#max-accounts").text(maxAccounts);
+    $("#remaining-slots").text(`剩余: ${remainingSlots}`);
+    // 计算使用百分比
+    const usagePercent = maxAccounts > 0 ? Math.round((usedCount / maxAccounts) * 100) : 0;
+    
+    // 更新进度条
     $(".battery-progress").attr("data-percent", usagePercent);
     $(".battery-percent").text(`${usagePercent}%`);
-    
+
     // 更新任务详情
     if (statusData.registration_details) {
         const details = statusData.registration_details;
-        
         // 更新统计信息
         if (details.statistics) {
             $("#total-runs").text(details.statistics.total_runs);
@@ -1204,19 +1218,19 @@ function updateTaskStatusDisplay(statusData) {
         }
     }
     
-    console.log('task_status=>', statusData.task_status)
-    // 根据任务状态更新UI，删除暂停状态处理
+    // 根据任务状态更新UI
     switch(statusData.task_status) {
         case "running":
             statusBadge.removeClass("bg-success bg-warning bg-danger").addClass("bg-primary");
             statusBadge.text("运行中");
-            taskStatusText.text("任务正在运行中");
+            taskStatusText.text(statusData.status_message || "任务正在运行中");
             taskIcon.removeClass("fa-check-circle fa-pause-circle fa-times-circle").addClass("fa-spinner fa-spin");
             taskIcon.removeClass("text-success text-warning text-danger").addClass("text-primary");
             
-            // 只保留隐藏开始按钮和显示停止按钮的逻辑
+            // 显示/隐藏按钮
             $("#start-registration").hide();
             $("#stop-registration").show();
+            $("#registration-details").show();
             break;
             
         case "stopped":
@@ -1227,18 +1241,13 @@ function updateTaskStatusDisplay(statusData) {
             taskIcon.removeClass("fa-spinner fa-spin fa-pause-circle fa-times-circle").addClass("fa-check-circle");
             taskIcon.removeClass("text-primary text-warning text-danger").addClass("text-success");
             
-            // 只保留显示开始按钮和隐藏停止按钮的逻辑
+            // 显示/隐藏按钮
             $("#start-registration").show();
             $("#stop-registration").hide();
+            $("#registration-details").hide();
             break;
     }
     
-    // 处理显示/隐藏注册详情面板
-    if (statusData.task_status === "running") {
-        $("#registration-details").show();
-    } else {
-        $("#registration-details").hide();
-    }
 }
 
 // 绑定排序事件
@@ -1295,4 +1304,94 @@ function addTableHeaderSorting() {
             loadAccounts(1, itemsPerPage, $("#search-input").val(), currentSortField, currentSortOrder);
         });
     });
+}
+
+// 设置定时任务刷新
+function setupTaskRefresh() {
+    // 清除可能存在的旧定时器
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+    }
+    // 设置新的定时刷新
+    refreshTimer = setInterval(function() {
+        // 检查任务状态
+        checkTaskStatus();
+        
+        // 如果在账号管理页面，刷新账号列表
+        if ($("#tasks-accounts").hasClass('active')) {
+            loadAccounts(currentPage, itemsPerPage, $("#search-input").val(), currentSortField, currentSortOrder);
+        }
+    }, REFRESH_INTERVAL);
+    
+    // 初始加载任务状态
+    checkTaskStatus();
+}
+
+// 检查任务状态
+function checkTaskStatus() {
+    fetch('/registration/status')
+        .then(response => response.json())
+        .then(data => {
+            // 确保有账号统计数据
+            updateTaskStatusDisplay(data);
+
+            // 更新任务运行时间和下次运行时间
+            let registration_details = data.registration_details;
+            if (registration_details.last_run) {
+                $("#last-run").text(formatDateTime(data.registration_details.last_run));
+            }
+            
+            if (data.registration_details.next_run) {
+                const nextRunTime = new Date(registration_details.next_run * 1000);
+                const now = new Date();
+                const timeLeft = Math.max(0, Math.floor((nextRunTime - now) / 1000));
+                
+                if (timeLeft > 0) {
+                    $("#next-run").text(`${formatDateTime(registration_details.next_run * 1000)} (还有${formatTimeLeft(timeLeft)})`);
+                } else {
+                    $("#next-run").text(`${formatDateTime(registration_details.next_run * 1000)}`);
+                }
+            } else {
+                $("#next-run").text("未排程");
+            }
+            
+            // 更新注册进度和消息
+            if (registration_details.registration_progress) {
+                $("#registration-progress").text(registration_details.registration_progress);
+            }
+            
+            if (registration_details.registration_message) {
+                $("#registration-message").text(registration_details.registration_message);
+            }
+        })
+        .catch(error => {
+            console.error('获取任务状态出错:', error);
+        });
+}
+
+// 格式化日期时间
+function formatDateTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+}
+
+// 格式化剩余时间
+function formatTimeLeft(seconds) {
+    if (seconds < 60) {
+        return `${seconds}秒`;
+    } else if (seconds < 3600) {
+        return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours}小时${minutes}分`;
+    }
 }
