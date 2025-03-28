@@ -898,3 +898,33 @@ h2, h3, h4, h5 {
     border-color: #86b7fe;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
+
+/* 系统维护按钮样式 - 更新蓝色按钮样式 */
+.config-section .btn-danger,
+.config-section .btn-primary {
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.config-section .btn-primary {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.config-section .btn-danger:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+    transform: translateY(-2px);
+}
+
+.config-section .btn-primary:hover {
+    background-color: #0a4fbf;
+    box-shadow: 0 4px 8px rgba(11, 94, 215, 0.3);
+    transform: translateY(-2px);
+}
+
+/* 系统维护卡片强调 */
+.config-section.card {
+    border-color: #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}

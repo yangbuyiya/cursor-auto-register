@@ -1036,6 +1036,28 @@ async def use_account_token(id: int):
         error(traceback.format_exc())
         return {"success": False, "message": f"使用Token失败: {str(e)}"}
 
+# 添加"重置设备id"功能
+@app.get("/reset-machine", tags=["System"])
+async def reset_machine():
+    """重置设备id"""
+    try:
+        # 重置Cursor的机器ID
+        from cursor_shadow_patcher import CursorShadowPatcher
+
+        resetter = CursorShadowPatcher()
+        patch_success = resetter.reset_machine_ids()
+        if patch_success:
+            return {
+                "success": True,
+                "message": f"成功重置了机器ID",
+            }
+        else:
+            return {"success": False, "message": "重置机器ID失败"}
+    except Exception as e:
+        error(f"重置机器ID失败: {str(e)}")
+        error(traceback.format_exc())
+        return {"success": False, "message": f"重置机器ID失败: {str(e)}"}
+
 
 # 添加配置相关模型
 class ConfigModel(BaseModel):

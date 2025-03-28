@@ -96,6 +96,17 @@ function bindEventHandlers() {
             }
         );
     });
+
+    // 重置机器ID按钮事件
+    $("#reset-machine-btn").click(function() {
+        showConfirmDialog(
+            '重置机器ID', 
+            '确定要重置机器ID吗？这将解除当前设备的绑定限制，但可能需要重新登录所有账号。',
+            function() {
+                resetMachineId();
+            }
+        );
+    });
 }
 
 // 全局变量
@@ -1529,4 +1540,37 @@ function formatTimeLeft(seconds) {
         const minutes = Math.floor((seconds % 3600) / 60);
         return `${hours}小时${minutes}分`;
     }
+}
+
+// 添加重置机器ID函数
+function resetMachineId() {
+    showLoading();
+    
+    $.ajax({
+        url: '/reset-machine',
+        method: 'GET',
+        success: function(response) {
+            hideLoading();
+            if (response.success) {
+                showAlert('success', '成功重置机器ID。' + (response.message || ''));
+                
+                // 询问是否需要重启服务以应用更改
+                setTimeout(function() {
+                    showConfirmDialog(
+                        '重启服务', 
+                        '机器ID已重置，建议重启服务以确保更改生效。是否立即重启？',
+                        function() {
+                            restartService();
+                        }
+                    );
+                }, 1000);
+            } else {
+                showAlert('danger', '重置机器ID失败: ' + (response.message || '未知错误'));
+            }
+        },
+        error: function(xhr) {
+            hideLoading();
+            showAlert('danger', '重置机器ID失败: ' + (xhr.responseJSON?.message || xhr.statusText || '未知错误'));
+        }
+    });
 }
