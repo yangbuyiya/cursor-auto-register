@@ -67,3 +67,13 @@ $(window).resize(function() {
         $('body').removeClass('sidebar-open');
     }
 }); 
+
+$("#email-type").change(function() {
+    if ($(this).val() === "tempemail") {
+        $("#tempemail-fields").show();
+        $("#zmail-fields").hide();
+    } else if ($(this).val() === "zmail") {
+        $("#tempemail-fields").hide();
+        $("#zmail-fields").show();
+    }
+});
