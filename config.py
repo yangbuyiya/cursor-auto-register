@@ -87,3 +87,19 @@ DATABASE_URL = os.getenv("DATABASE_URL", DATABASE_URL)
 # ===== Cursor main.js 配置 =====
 # Cursor 主文件路径
 CURSOR_PATH = os.getenv("CURSOR_PATH", None)
+
+# ===== 代理配置 =====
+# 是否启用代理
+USE_PROXY = os.getenv("USE_PROXY", "False").lower() == "true"
+# 代理类型
+PROXY_TYPE = os.getenv("PROXY_TYPE", "http")
+# 代理服务器地址
+PROXY_HOST = os.getenv("PROXY_HOST", "")
+# 代理服务器端口
+PROXY_PORT = os.getenv("PROXY_PORT", "")
+# 代理服务器用户名
+PROXY_USERNAME = os.getenv("PROXY_USERNAME", "")
+# 代理服务器密码
+PROXY_PASSWORD = os.getenv("PROXY_PASSWORD", "")
+# 代理服务器超时时间
+PROXY_TIMEOUT = int(os.getenv("PROXY_TIMEOUT", "10"))

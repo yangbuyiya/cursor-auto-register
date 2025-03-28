@@ -28,6 +28,8 @@ from config import (
 )
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+import sys
+import psutil
 
 # 全局状态追踪
 registration_status = {
@@ -1046,6 +1048,13 @@ class ConfigModel(BaseModel):
     EMAIL_PIN: str
     BROWSER_PATH: Optional[str] = None
     CURSOR_PATH: Optional[str] = None
+    USE_PROXY: bool = False
+    PROXY_TYPE: str = "http"
+    PROXY_HOST: str = ""
+    PROXY_PORT: str = ""
+    PROXY_TIMEOUT: int = 10
+    PROXY_USERNAME: str = ""
+    PROXY_PASSWORD: str = ""
 
 
 # 获取配置端点
@@ -1065,9 +1074,17 @@ async def get_config():
             "EMAIL_PIN": os.getenv("EMAIL_PIN", ""),
             "BROWSER_PATH": os.getenv("BROWSER_PATH", ""),
             "CURSOR_PATH": os.getenv("CURSOR_PATH", ""),
-            "DYNAMIC_USERAGENT": os.getenv("DYNAMIC_USERAGENT", "False").lower() == "true"
+            "DYNAMIC_USERAGENT": os.getenv("DYNAMIC_USERAGENT", "False").lower() == "true",
+            # 添加代理配置
+            "USE_PROXY": os.getenv("USE_PROXY", "False"),
+            "PROXY_TYPE": os.getenv("PROXY_TYPE", "http"),
+            "PROXY_HOST": os.getenv("PROXY_HOST", ""),
+            "PROXY_PORT": os.getenv("PROXY_PORT", ""),
+            "PROXY_TIMEOUT": os.getenv("PROXY_TIMEOUT", "10"),
+            "PROXY_USERNAME": os.getenv("PROXY_USERNAME", ""),
+            "PROXY_PASSWORD": os.getenv("PROXY_PASSWORD", ""),
         }
-
+        
         return {"success": True, "data": config}
     except Exception as e:
         error(f"获取配置失败: {str(e)}")
@@ -1076,9 +1093,9 @@ async def get_config():
 
 
 # 更新配置端点
-@app.put("/config", tags=["Config"])
+@app.post("/config", tags=["Config"])
 async def update_config(config: ConfigModel):
-    """更新系统配置"""
+    """更新配置"""
     try:
         # 获取.env文件路径
         env_path = Path(__file__).parent / ".env"
@@ -1089,7 +1106,7 @@ async def update_config(config: ConfigModel):
             with open(env_path, "r", encoding="utf-8") as f:
                 current_lines = f.readlines()
 
-        # 构建配置字典
+        # 构建配置字典 - 修正：直接使用模型属性而非get方法
         config_dict = {
             "BROWSER_HEADLESS": str(config.BROWSER_HEADLESS),
             "DYNAMIC_USERAGENT": str(config.DYNAMIC_USERAGENT),
@@ -1098,6 +1115,14 @@ async def update_config(config: ConfigModel):
             "EMAIL_DOMAINS": config.EMAIL_DOMAINS,
             "EMAIL_USERNAME": config.EMAIL_USERNAME,
             "EMAIL_PIN": config.EMAIL_PIN,
+            # 添加代理配置
+            "USE_PROXY": str(config.USE_PROXY),
+            "PROXY_TYPE": config.PROXY_TYPE,
+            "PROXY_HOST": config.PROXY_HOST,
+            "PROXY_PORT": config.PROXY_PORT,
+            "PROXY_TIMEOUT": str(config.PROXY_TIMEOUT),
+            "PROXY_USERNAME": config.PROXY_USERNAME,
+            "PROXY_PASSWORD": config.PROXY_PASSWORD,
         }
 
         # 添加可选配置（如果提供）
@@ -1142,6 +1167,44 @@ async def update_config(config: ConfigModel):
         error(f"更新配置失败: {str(e)}")
         error(traceback.format_exc())
         return {"success": False, "message": f"更新配置失败: {str(e)}"}
+
+
+# 添加重启API端点
+@app.post("/restart", tags=["System"])
+async def restart_service():
+    """重启应用服务"""
+    try:
+        info("收到重启服务请求")
+        
+        # 创建一个子进程来执行重启
+        if sys.platform == 'win32':
+            cmd = 'powershell -Command "Start-Sleep -s 2; Start-Process python -ArgumentList \'api.py\'"'
+        else:
+            cmd = 'bash -c "sleep 2 && nohup python api.py > /dev/null 2>&1 &"'
+            
+        # 启动新进程
+        import subprocess
+        subprocess.Popen(cmd, shell=True)
+        
+        # 准备在2秒后关闭当前进程
+        async def shutdown():
+            await asyncio.sleep(2)
+            info("执行服务重启...")
+            for proc in psutil.process_children(psutil.Process()):
+                try:
+                    proc.terminate()
+                except:
+                    pass
+            os._exit(0)  # 强制退出当前进程
+            
+        # 启动关闭任务
+        asyncio.create_task(shutdown())
+        
+        return {"success": True, "message": "服务正在重启，请稍候..."}
+    except Exception as e:
+        error(f"重启服务失败: {str(e)}")
+        error(traceback.format_exc())
+        return {"success": False, "message": f"重启服务失败: {str(e)}"}
 
 
 if __name__ == "__main__":

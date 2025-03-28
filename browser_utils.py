@@ -7,7 +7,14 @@ from config import (
     BROWSER_PATH,
     BROWSER_HEADLESS,
     BROWSER_PROXY,
-    DYNAMIC_USERAGENT
+    DYNAMIC_USERAGENT,
+    USE_PROXY,
+    PROXY_TYPE,
+    PROXY_HOST,
+    PROXY_PORT,
+    PROXY_USERNAME,
+    PROXY_PASSWORD,
+    PROXY_TIMEOUT
 )
 import random
 import time
@@ -88,11 +95,25 @@ class BrowserManager:
                 co.set_argument("--no-sandbox")
                 co.set_argument("--disable-gpu")
 
+            # 添加代理设置
+            if USE_PROXY and PROXY_HOST and PROXY_PORT:
+                proxy_string = f"{PROXY_TYPE}://"
+                
+                # 如果有认证信息
+                if PROXY_USERNAME and PROXY_PASSWORD:
+                    proxy_string += f"{PROXY_USERNAME}:{PROXY_PASSWORD}@"
+                    
+                proxy_string += f"{PROXY_HOST}:{PROXY_PORT}"
+                
+                info(f"使用代理: {PROXY_TYPE} {PROXY_HOST}:{PROXY_PORT} 账号/密码： {PROXY_USERNAME}:{PROXY_PASSWORD}")
+                co.set_argument(f'--proxy-server={proxy_string}')
+
             self.browser = Chromium(co)
             info("浏览器初始化成功")
         except Exception as e:
             error(f"浏览器初始化失败: {str(e)}")
         return self.browser
+
     def _get_extension_path(self):
         """获取插件路径"""
         root_dir = os.getcwd()
