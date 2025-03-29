@@ -198,6 +198,7 @@ class EmailVerificationHandler:
                 time.sleep(0.5)
                 if mail_detail_data.get("result") == False:
                     error(f"获取邮件详情失败: {mail_detail_data}")
+                    return None, None
             except requests.exceptions.Timeout:
                 error("获取邮件详情超时")
                 return None, None
