@@ -196,8 +196,8 @@ class EmailVerificationHandler:
                 )  # 添加超时参数
                 mail_detail_data = mail_detail_response.json()
                 time.sleep(0.5)
-                if not mail_detail_data.get("result"):
-                    return None, None
+                if mail_detail_data.get("result") == False:
+                    error(f"获取邮件详情失败: {mail_detail_data}")
             except requests.exceptions.Timeout:
                 error("获取邮件详情超时")
                 return None, None
