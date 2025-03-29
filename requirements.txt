@@ -10,3 +10,4 @@ psycopg2-binary==2.9.9
 playwright==1.41.2
 aiosqlite==0.21.0
 fake-useragent==2.1.0
+python-multipart
