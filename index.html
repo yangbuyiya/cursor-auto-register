@@ -24,6 +24,9 @@
 
     <!-- 加载中遮罩 -->
     <div class="loading-overlay" id="loading-overlay">
+        <button type="button" class="close-overlay" aria-label="关闭">
+            <i class="fas fa-times fa-lg"></i>
+        </button>
         <div class="spinner-container">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">加载中...</span>
@@ -161,6 +164,43 @@
                                         <div>
                                             <strong>注册进度: </strong><span id="registration-progress">0%</span>
                                             <div id="registration-message">正在初始化注册流程...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自定义邮箱注册卡片 - 移到下方 -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">自定义邮箱注册</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="custom-email" class="form-label">输入邮箱地址</label>
+                                        <div class="input-group">
+                                            <input type="email" class="form-control" id="custom-email"
+                                                placeholder="例如: your.email@example.com">
+                                            <button class="btn btn-primary" type="button" id="custom-registration">
+                                                <i class="fas fa-user-plus me-1"></i> 使用此邮箱注册
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">使用自定义邮箱注册时，需要手动获取验证码</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="alert alert-info" id="custom-registration-status"
+                                        style="display: none;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <span id="custom-registration-message">准备就绪</span>
                                         </div>
                                     </div>
                                 </div>
@@ -332,7 +372,8 @@
                                             <small class="text-muted">True=无界面运行浏览器，False=显示浏览器界面</small>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="dynamic-useragent" class="form-label">动态User-Agent（先不要配置）</label>
+                                            <label for="dynamic-useragent"
+                                                class="form-label">动态User-Agent（先不要配置）</label>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" role="switch"
                                                     id="dynamic-useragent" disabled>
@@ -349,7 +390,8 @@
                                         <div class="mb-3">
                                             <label for="browser-path" class="form-label">浏览器路径 (可选)</label>
                                             <input type="text" id="browser-path" class="form-control" disabled>
-                                            <small class="text-muted">Windows下浏览器可执行文件的完整路径(示例：C:\Users\Administrator\AppData\Local\Google\Chrome\Bin\chrome.exe)</small>
+                                            <small
+                                                class="text-muted">Windows下浏览器可执行文件的完整路径(示例：C:\Users\Administrator\AppData\Local\Google\Chrome\Bin\chrome.exe)</small>
                                         </div>
                                         <div class="mb-3">
                                             <label for="accounts-limit" class="form-label">最大账号数量</label>
@@ -357,7 +399,7 @@
                                                 disabled>
                                             <small class="text-muted">系统允许创建的最大账号数量</small>
                                         </div>
-                                        
+
                                         <!-- 验证码获取方式 -->
                                         <div class="mb-3">
                                             <label for="captcha-method" class="form-label">验证码获取方式</label>
@@ -549,6 +591,7 @@
                     <p>确定要删除此账号吗？此操作不可恢复。</p>
                     <p class="text-danger fw-bold">邮箱: <span id="deleteEmailConfirm"></span></p>
                     <p class="text-muted">ID: <span id="deleteIdConfirm"></span></p>
+                    <input type="hidden" id="deleteAccountId" value="">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -590,7 +633,8 @@
     </div>
 
     <!-- 账号使用记录模态框 -->
-    <div class="modal fade" id="usageRecordModal" tabindex="-1" aria-labelledby="usageRecordModalLabel" aria-hidden="true">
+    <div class="modal fade" id="usageRecordModal" tabindex="-1" aria-labelledby="usageRecordModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -634,6 +678,35 @@
             <div class="spinner-border spinner-border-sm text-secondary" role="status"
                 style="width: 0.8rem; height: 0.8rem;">
                 <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 验证码输入模态框 -->
+    <div class="modal fade" id="codeInputModal" tabindex="-1" aria-labelledby="codeInputModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="codeInputModalLabel">输入验证码</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>请检查以下邮箱中收到的验证码：</p>
+                    <p class="fw-bold text-primary" id="verificationEmailDisplay"></p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span>通常验证码为6位数字，在邮件正文中</span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="verificationCode" class="form-label">验证码</label>
+                        <input type="text" class="form-control" id="verificationCode" placeholder="输入验证码" maxlength="6">
+                    </div>
+                    <input type="hidden" id="pendingEmailId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="submitCodeBtn">提交验证码</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                </div>
             </div>
         </div>
     </div>
