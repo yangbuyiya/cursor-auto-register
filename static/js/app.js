@@ -83,6 +83,14 @@ function initializeApplication() {
 
   // 初始清理背景遮罩，确保页面加载时没有残留
   cleanupModalBackdrops();
+
+  // 在自动刷新指示器中添加最后更新时间显示
+  $('.position-fixed.bottom-0.end-0 .d-flex').append(
+    '<span class="ms-2">最后更新: <span id="last-update-time">--:--:--</span></span>'
+  );
+
+  // 立即更新一次时间，显示页面初始加载时间
+  updateLastRefreshTime();
 }
 
 // 设置全局模态框事件
@@ -364,9 +372,13 @@ function loadAccounts(
   perPage = itemsPerPage,
   search = '',
   sortField = currentSortField,
-  sortOrder = currentSortOrder
+  sortOrder = currentSortOrder,
+  showLoadingOverlay = true
 ) {
-  showLoading();
+  // 只在需要时显示加载遮罩
+  if (showLoadingOverlay) {
+    showLoading();
+  }
 
   // 构建URL查询参数
   let params = new URLSearchParams({
@@ -430,14 +442,20 @@ function loadAccounts(
         // 淡入表格
         $('#accounts-table').animate({ opacity: 1 }, 300);
 
-        hideLoading();
+        if (showLoadingOverlay) {
+          hideLoading();
+        }
       } else {
+        if (showLoadingOverlay) {
+          hideLoading();
+        }
         showAlert('danger', '加载账号失败: ' + response.message);
-        hideLoading();
       }
     },
     error: function (xhr) {
-      hideLoading();
+      if (showLoadingOverlay) {
+        hideLoading();
+      }
       showAlert(
         'danger',
         '加载账号失败: ' + (xhr.responseJSON?.detail || xhr.statusText)
@@ -1916,6 +1934,7 @@ function setupTaskRefresh() {
   if (refreshTimer) {
     clearInterval(refreshTimer);
   }
+
   // 设置新的定时刷新
   refreshTimer = setInterval(function () {
     // 检查任务状态
@@ -1923,18 +1942,35 @@ function setupTaskRefresh() {
 
     // 如果在账号管理页面，刷新账号列表
     if ($('#tasks-accounts').hasClass('active')) {
+      // 静默刷新，不显示loading框
       loadAccounts(
         currentPage,
         itemsPerPage,
         $('#search-input').val(),
         currentSortField,
-        currentSortOrder
+        currentSortOrder,
+        false
       );
+
+      // 更新最后刷新时间
+      updateLastRefreshTime();
     }
   }, REFRESH_INTERVAL);
 
   // 初始加载任务状态
   checkTaskStatus();
+}
+
+// 更新最后刷新时间的函数
+function updateLastRefreshTime() {
+  const now = new Date();
+  const timeString =
+    now.getHours().toString().padStart(2, '0') +
+    ':' +
+    now.getMinutes().toString().padStart(2, '0') +
+    ':' +
+    now.getSeconds().toString().padStart(2, '0');
+  $('#last-update-time').text(timeString);
 }
 
 // 检查任务状态

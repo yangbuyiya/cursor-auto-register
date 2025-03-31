@@ -1255,6 +1255,7 @@ class ConfigModel(BaseModel):
     EMAIL_DOMAINS: str
     EMAIL_USERNAME: str
     EMAIL_PIN: str
+    EMAIL_CODE_TYPE: Optional[str] = "API"  # 添加EMAIL_CODE_TYPE属性，默认值为"API"
     BROWSER_PATH: Optional[str] = None
     CURSOR_PATH: Optional[str] = None
     USE_PROXY: Optional[bool] = False
