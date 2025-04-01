@@ -11,6 +11,9 @@ $(document).ready(function () {
   // 初始化应用
   initializeApplication();
 
+  // 每60秒检查一次服务状态
+  setInterval(checkTaskStatus, 60 * 1000);
+
   // 绑定遮罩关闭按钮事件 - 使用事件委托确保对动态元素也有效
   $(document).on('click', '.close-overlay', function () {
     hideLoading();
@@ -590,18 +593,35 @@ function updateAccountsTable(accounts) {
   const accountsBody = $('#accounts-tbody');
   accountsBody.empty();
 
+  // 计算当前页的起始索引
+  const startIndex = (currentPage - 1) * itemsPerPage;
+
+  // 确保每个账号都有ID并且所有字段都有值
+  accounts.forEach((account, index) => {
+    if (!account.id) account.id = Date.now() + index;
+
+    // 确保所有字段都不为undefined，防止jQuery错误
+    account.email = account.email || '';
+    account.token = account.token || '';
+    account.password = account.password || '';
+    account.status = account.status || 'active';
+    account.usage_limit = account.usage_limit || '';
+    account.created_at = account.created_at || '';
+    account.user = account.user || '';
+  });
+
+  // 如果没有数据，显示空状态
   if (accounts.length === 0) {
-    // 添加空状态提示
     accountsBody.html(`
-            <tr>
-                <td colspan="7" class="text-center py-4">
-                    <div class="py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">暂无账号数据</p>
-                    </div>
-                </td>
-            </tr>
-        `);
+      <tr>
+        <td colspan="7" class="text-center py-4">
+          <div class="py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <p class="text-muted">暂无账号数据</p>
+          </div>
+        </td>
+      </tr>
+    `);
     return;
   }
 
@@ -609,7 +629,9 @@ function updateAccountsTable(accounts) {
   accounts.forEach((account, index) => {
     // 完整的行模板，包含所有单元格内容
     const row = `
-            <tr id="account-row-${account.id}" data-status="${account.status}" 
+            <tr id="account-row-${account.id}" data-account-id="${
+      account.id
+    }" data-status="${account.status}" 
                 class="${
                   account.status === 'deleted'
                     ? 'table-danger'
@@ -617,6 +639,9 @@ function updateAccountsTable(accounts) {
                     ? 'table-warning'
                     : ''
                 }">
+                <td class="d-none d-md-table-cell">${
+                  startIndex + index + 1
+                }</td>
                 <td class="email-column">
                     ${account.email}
                     <span class="badge ${
@@ -730,6 +755,17 @@ function renderAccountsTable() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, filteredAccounts.length);
   const currentPageData = filteredAccounts.slice(startIndex, endIndex);
+
+  // 确保每个账号对象的字段都有值
+  currentPageData.forEach((account, index) => {
+    if (!account.id) account.id = Date.now() + index;
+    account.email = account.email || '';
+    account.token = account.token || '';
+    account.password = account.password || '';
+    account.status = account.status || 'active';
+    account.usage_limit = account.usage_limit || '';
+    account.created_at = account.created_at || '';
+  });
 
   // 渲染每行数据
   currentPageData.forEach((account, index) => {
@@ -1322,8 +1358,11 @@ function bindTableEvents() {
   $('.view-token-btn')
     .off('click')
     .on('click', function () {
-      const token = $(this).data('token');
-      const accountId = $(this).data('account-id');
+      const token = $(this).data('token') || '';
+      const accountId =
+        $(this).attr('data-account-id') ||
+        $(this).closest('tr').data('account-id') ||
+        Date.now();
 
       // 确保token不为空
       if (!token) {
@@ -1331,8 +1370,13 @@ function bindTableEvents() {
         return;
       }
 
+      // 设置模态框内容
       $('#tokenFullText').val(token);
-      $('#useTokenBtn').data('account-id', accountId);
+
+      // 确保使用DOM原生方法设置属性，避免jQuery缓存问题
+      document
+        .getElementById('useTokenBtn')
+        .setAttribute('data-account-id', String(accountId));
 
       // 确保每次打开模态框时都重新绑定复制按钮事件
       $('#copyTokenBtn')
@@ -1529,12 +1573,17 @@ function renderUsageProgress(usageLimit) {
 
 // 修改Token列的渲染方式
 function renderTokenColumn(token, accountId, email) {
+  // 确保所有参数都有默认值，防止undefined
+  const safeToken = token || '';
+  const safeAccountId = accountId || Date.now();
+  const safeEmail = email || '';
+
   return `
         <td class="token-column">
-            <button class="btn btn-sm btn-outline-info view-token-btn" data-token="${token}" data-account-id="${accountId}">
+            <button class="btn btn-sm btn-outline-info view-token-btn" data-token="${safeToken}" data-account-id="${safeAccountId}">
                 <i class="fas fa-eye"></i> 查看Token
             </button>
-            <button class="btn btn-sm btn-outline-info view-records-btn" data-email="${email}" data-id="${accountId}" title="查看使用记录">
+            <button class="btn btn-sm btn-outline-info view-records-btn" data-email="${email}" data-id="${safeAccountId}" title="查看使用记录">
                 <i class="fas fa-history"></i>
             </button>
         </td>
@@ -2348,9 +2397,14 @@ function bindModalEvents() {
     .on(
       'click',
       throttle(function () {
-        const accountId = $(this).data('account-id');
+        // 直接从DOM元素获取属性
+        const accountId =
+          document
+            .getElementById('useTokenBtn')
+            .getAttribute('data-account-id') || '';
+
         if (!accountId) {
-          showAlert('账号ID无效', 'danger');
+          showAlert('无法获取账号ID，请刷新页面后重试', 'danger');
           return;
         }
 
@@ -2369,9 +2423,7 @@ function bindModalEvents() {
             if (data.success) {
               showAlert(data.message, 'success');
               $('#tokenViewModal').modal('hide');
-              cleanupModalBackdrops(); // 添加清理
-
-              // 成功使用Token后刷新账号列表
+              cleanupModalBackdrops();
               setTimeout(() => fetchAccounts(), 1000);
             } else {
               showAlert(

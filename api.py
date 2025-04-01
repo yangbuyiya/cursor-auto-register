@@ -401,10 +401,25 @@ async def get_accounts(
             result = await session.execute(query)
             accounts = result.scalars().all()
             
+            # 转换为可序列化的数据，确保包含id字段
+            accounts_data = []
+            for account in accounts:
+                account_dict = {
+                    "id": account.id,  # 确保包含id字段
+                    "email": account.email,
+                    "password": account.password,
+                    "token": account.token,
+                    "user": account.user if hasattr(account, "user") else "",
+                    "usage_limit": account.usage_limit,
+                    "created_at": account.created_at,
+                    "status": account.status
+                }
+                accounts_data.append(account_dict)
+            
             # 构建分页响应
             return {
                 "success": True,
-                "data": accounts,
+                "data": accounts_data,  # 使用序列化后的数据
                 "pagination": {
                     "page": page,
                     "per_page": per_page,
