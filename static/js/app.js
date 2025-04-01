@@ -1000,6 +1000,10 @@ function updateAccountUsageLimit(email, usageLimit) {
 // 修复任务状态更新问题
 function startTaskManually() {
   showLoading();
+
+  // 清除自定义邮箱注册标记
+  window.customEmailRegistration = false;
+
   fetch('/registration/start', {
     method: 'GET',
   })
@@ -1010,11 +1014,18 @@ function startTaskManually() {
         showAlert('定时任务已成功启动', 'success');
         checkTaskStatus();
 
-        // 显示验证码提示框
-        $('#verification-tip-alert').show();
+        // 清除可能存在的验证码提示
+        $('#verification-tip-alert').hide();
 
-        // 启动验证码检查
-        startVerificationCodeCheck();
+        // 短暂延迟后再启动验证码检查，确保UI已更新
+        setTimeout(() => {
+          // 启动验证码检查
+          startVerificationCodeCheck();
+          showAlert(
+            '任务注册已启动，系统将自动处理验证码，如需手动输入将会提示',
+            'info'
+          );
+        }, 500);
       } else {
         showAlert(`启动任务失败: ${data.message || '未知错误'}`, 'danger');
       }
@@ -2246,8 +2257,16 @@ function registerWithCustomEmail() {
   showCustomRegistrationStatus('注册中，请稍候...', 'info');
   $('#custom-registration').prop('disabled', true);
 
-  // 启动验证码检查
-  startVerificationCodeCheck();
+  // 设置全局标记，指示当前是自定义邮箱注册场景
+  window.customEmailRegistration = true;
+
+  // 启动验证码检查前清除任何可能的提示
+  $('#verification-tip-alert').hide();
+  // 短暂延迟后再启动验证码检查，确保UI已更新
+  setTimeout(() => {
+    // 启动验证码检查
+    startVerificationCodeCheck();
+  }, 500);
 
   // 调用API
   $.ajax({
@@ -2265,11 +2284,15 @@ function registerWithCustomEmail() {
           loadAccounts(1, itemsPerPage);
           // 注册成功后停止验证码检查
           stopVerificationCodeCheck();
+          // 清除自定义邮箱注册标记
+          window.customEmailRegistration = false;
         }, 2000);
       } else {
         showCustomRegistrationStatus('注册失败: ' + response.message, 'danger');
         // 注册失败后停止验证码检查
         stopVerificationCodeCheck();
+        // 清除自定义邮箱注册标记
+        window.customEmailRegistration = false;
       }
       $('#custom-registration').prop('disabled', false);
     },
@@ -2285,15 +2308,8 @@ function registerWithCustomEmail() {
       $('#custom-registration').prop('disabled', false);
       // 注册错误后停止验证码检查
       stopVerificationCodeCheck();
-    },
-    // 添加complete回调，确保无论如何都会停止验证码检查
-    complete: function () {
-      // 在所有请求完成后（无论成功或失败）确保验证码检查已停止
-      setTimeout(() => {
-        if (verificationCheckTimer) {
-          stopVerificationCodeCheck();
-        }
-      }, 1000);
+      // 清除自定义邮箱注册标记
+      window.customEmailRegistration = false;
     },
   });
 }
@@ -2406,6 +2422,31 @@ function startVerificationCodeCheck() {
     clearInterval(verificationCheckTimer);
   }
 
+  // 获取当前操作模式 - 检查是否在任务注册页面或自定义邮箱注册
+  const isTaskRegistration =
+    $('#task-status').length > 0 &&
+    $('#task-status').is(':visible') &&
+    !window.customEmailRegistration;
+  const isCustomEmailRegistration = window.customEmailRegistration === true;
+
+  // 根据不同场景显示不同的提示文案
+  if (isTaskRegistration) {
+    // 任务注册场景
+    $('#verification-tip-content').text(
+      '在任务注册过程中，如果自动获取验证码失败，系统将自动转为手动输入模式，请留意弹窗提示并及时输入验证码。'
+    );
+  } else if (isCustomEmailRegistration) {
+    // 自定义邮箱注册场景
+    $('#verification-tip-content').text(
+      '使用自定义邮箱注册时，需要手动输入验证码，请检查您的邮箱并在弹窗中及时输入验证码。'
+    );
+  } else {
+    // 默认场景
+    $('#verification-tip-content').text(
+      '在注册过程中，系统将请求邮箱验证码。如需手动输入验证码，请留意弹窗提示并及时输入。'
+    );
+  }
+
   // 显示验证码提示框
   $('#verification-tip-alert').show();
 
@@ -2420,6 +2461,9 @@ function stopVerificationCodeCheck() {
 
     // 隐藏验证码提示框
     $('#verification-tip-alert').hide();
+
+    // 清除自定义邮箱注册标记
+    window.customEmailRegistration = false;
 
     // 调用后端接口清理所有待处理的验证码请求
     fetch('/verification/clear')
@@ -2513,17 +2557,48 @@ function showVerificationModal(pendingRequest) {
       pendingRequest.hasOwnProperty('auto_failure') &&
       pendingRequest.auto_failure === true;
 
+    // 判断是否是任务注册场景或自定义邮箱注册场景
+    const isTaskRegistration =
+      $('#task-status').length > 0 &&
+      $('#task-status').is(':visible') &&
+      !window.customEmailRegistration;
+    const isCustomEmailRegistration =
+      window.customEmailRegistration === true ||
+      (pendingRequest.email.includes('@') &&
+        !pendingRequest.email.includes('tempmail.plus') &&
+        !pendingRequest.email.includes('zmail.plus'));
+
     // 设置模态框标题和内容，根据场景提供不同提示
-    if (pendingRequest.email.includes('@') && isAutoFailureCase) {
-      // 自动获取失败后的手动输入
+    if (isTaskRegistration && isAutoFailureCase) {
+      // 任务注册场景 - 自动获取失败后的手动输入
       $('#codeInputModalLabel').text('任务注册 - 手动输入验证码');
       $('#verification-message').html(
         '<div class="alert alert-warning mb-3">自动获取验证码失败，请手动输入验证码以继续注册流程。</div>'
       );
-    } else if (pendingRequest.email.includes('@')) {
-      // 普通的手动输入验证码
+      $('#verification-code-hint').text(
+        '请检查邮箱中的验证邮件，通常验证码为6位数字，位于邮件正文中。'
+      );
+    } else if (isTaskRegistration) {
+      // 任务注册场景 - 普通手动输入
+      $('#codeInputModalLabel').text('任务注册 - 输入验证码');
+      $('#verification-message').html('');
+      $('#verification-code-hint').text(
+        '通常验证码为6位数字，在邮件正文中可以找到。'
+      );
+    } else if (isCustomEmailRegistration) {
+      // 自定义邮箱注册场景
+      $('#codeInputModalLabel').text('自定义邮箱注册 - 输入验证码');
+      $('#verification-message').html(
+        '<div class="alert alert-info mb-3">请查看您的邮箱，输入收到的验证码完成注册。</div>'
+      );
+      $('#verification-code-hint').text(
+        '请检查您的邮箱收件箱及垃圾邮件文件夹，验证码通常为6位数字。'
+      );
+    } else {
+      // 默认场景
       $('#codeInputModalLabel').text('请输入验证码');
       $('#verification-message').html('');
+      $('#verification-code-hint').text('通常验证码为6位数字，在邮件正文中');
     }
 
     // 显示模态框前先清理可能存在的背景
@@ -2764,6 +2839,9 @@ function fetchAccounts() {
       if (data.success) {
         // 保存账号数据
         accounts = data.data || [];
+
+        // 关闭"等待账号注册完成..."的提示
+        $('.alert-info:contains("等待账号注册完成")').alert('close');
 
         // 直接更新账号表格，不需要额外的过滤和排序
         updateAccountsTable(accounts);

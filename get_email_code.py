@@ -223,8 +223,12 @@ class EmailVerificationHandler:
         # 生成唯一ID
         email_id = str(uuid.uuid4())
         
+        # 判断是否是自定义邮箱场景
+        is_custom_email = self.custom_email is not None
+        
         # 判断是否是自动获取失败后转为手动输入
-        is_auto_failure = EMAIL_CODE_TYPE != "INPUT"
+        # 修正判断逻辑：自定义邮箱场景不应该认为是自动获取失败
+        is_auto_failure = EMAIL_CODE_TYPE != "INPUT" and not is_custom_email
         
         # 存储到等待字典中
         global pending_verification_codes
@@ -238,6 +242,8 @@ class EmailVerificationHandler:
         
         if is_auto_failure:
             info(f"已创建验证码请求 ID: {email_id}，这是在自动获取失败后转为手动输入")
+        elif is_custom_email:
+            info(f"已创建验证码请求 ID: {email_id}，需要您检查自定义邮箱并输入验证码")
         else:
             info(f"已创建验证码请求 ID: {email_id}，等待前端输入验证码")
         

@@ -164,7 +164,8 @@
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-info-circle me-2"></i>
                                     <div>
-                                        <strong>验证码提示：</strong> 在任务注册过程中，如果自动获取验证码失败，系统将自动转为前端手动输入模式，请留意弹窗提示并及时输入验证码。
+                                        <strong>验证码提示：</strong> <span
+                                            id="verification-tip-content">在注册过程中，系统将请求邮箱验证码。如需手动输入验证码，请留意弹窗提示并及时输入。</span>
                                     </div>
                                 </div>
                             </div>
@@ -204,7 +205,8 @@
                                                 <i class="fas fa-user-plus me-1"></i> 使用此邮箱注册
                                             </button>
                                         </div>
-                                        <small class="text-muted">使用自定义邮箱注册时，需要手动获取验证码</small>
+                                        <small
+                                            class="text-muted">使用自定义邮箱注册时，您需要手动输入验证码。注册提交后，请检查您的邮箱收件箱或垃圾邮件文件夹，获取Cursor发送的验证码。</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -711,7 +713,7 @@
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        <span>通常验证码为6位数字，在邮件正文中</span>
+                        <span id="verification-code-hint">通常验证码为6位数字，在邮件正文中</span>
                     </div>
                     <div class="mb-3">
                         <label for="verificationCode" class="form-label">验证码</label>
@@ -720,8 +722,8 @@
                     <input type="hidden" id="pendingEmailId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="submitCodeBtn">提交验证码</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="submitCodeBtn">提交验证码</button>
                 </div>
             </div>
         </div>
