@@ -157,6 +157,18 @@
                                 </div>
                             </div>
 
+                            <!-- 添加验证码获取提示 -->
+                            <div class="alert alert-info mt-3" id="verification-tip-alert">
+                                <button type="button" class="btn-close float-end" aria-label="关闭"
+                                    onclick="$('#verification-tip-alert').hide()"></button>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <div>
+                                        <strong>验证码提示：</strong> 在任务注册过程中，如果自动获取验证码失败，系统将自动转为前端手动输入模式，请留意弹窗提示并及时输入验证码。
+                                    </div>
+                                </div>
+                            </div>
+
                             <div id="registration-details" class="mt-3" style="display: none;">
                                 <div class="alert alert-info">
                                     <div class="d-flex align-items-center">
@@ -693,6 +705,10 @@
                 <div class="modal-body">
                     <p>请检查以下邮箱中收到的验证码：</p>
                     <p class="fw-bold text-primary" id="verificationEmailDisplay"></p>
+
+                    <!-- 添加验证码提示信息区域 -->
+                    <div id="verification-message"></div>
+
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <span>通常验证码为6位数字，在邮件正文中</span>

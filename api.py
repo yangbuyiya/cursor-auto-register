@@ -30,6 +30,9 @@ from dotenv import load_dotenv
 import json
 import time
 import uuid
+import aiosqlite
+import sqlite3
+import logging
 
 # 从get_email_code.py导入验证码请求字典
 from get_email_code import EmailVerificationHandler
@@ -711,6 +714,12 @@ async def stop_registration():
         background_tasks["registration_task"] = None
         registration_status["is_running"] = False
         registration_status["last_status"] = "manually stopped"
+        
+        # 清理所有待处理的验证码请求
+        for email_id, request_info in list(get_email_code.pending_verification_codes.items()):
+            if request_info["status"] == "pending":
+                get_email_code.pending_verification_codes.pop(email_id, None)
+                info(f"已清理待处理的验证码请求: {email_id}")
 
         return {"success": True, "message": "Registration task stopped successfully"}
     except Exception as e:
@@ -1475,15 +1484,40 @@ async def register_with_custom_email(request: CustomRegistrationRequest):
         
         # 调用注册函数，传入自定义邮箱
         try:
-            success = await asyncio.get_event_loop().run_in_executor(
+            result = await asyncio.get_event_loop().run_in_executor(
                 None, lambda: register_account(custom_email=request.email)
             )
             
-            if success:
+            # 处理布尔值情况 - True表示成功，False表示失败
+            if result is True:
                 return JSONResponse(
                     content={
                         "success": True,
                         "message": f"使用邮箱 {request.email} 注册成功"
+                    }
+                )
+            elif result is False:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "message": f"使用邮箱 {request.email} 注册失败，请检查日志获取详细信息"
+                    }
+                )
+            # 字符串状态码处理
+            elif result == "SUCCESS":
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "message": f"使用邮箱 {request.email} 注册成功"
+                    }
+                )
+            elif result == "EMAIL_VERIFICATION_FAILED":
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "验证码获取失败，请检查邮箱是否正确或尝试其他邮箱"
                     }
                 )
             else:
@@ -1491,7 +1525,7 @@ async def register_with_custom_email(request: CustomRegistrationRequest):
                     status_code=500,
                     content={
                         "success": False,
-                        "message": f"使用邮箱 {request.email} 注册失败"
+                        "message": f"使用邮箱 {request.email} 注册失败: {result}"
                     }
                 )
         except SystemExit:
@@ -1518,15 +1552,30 @@ async def register_with_custom_email(request: CustomRegistrationRequest):
 @app.get("/verification/pending")
 async def check_pending_verification():
     """检查是否有等待验证码输入的请求"""
-    # 返回所有等待验证的邮箱ID及邮箱地址
     result = []
+    
     for email_id, email_info in get_email_code.pending_verification_codes.items():
-        if email_info.get("status") == "pending":
+        if email_info["status"] == "pending":
+            request_data = {
+                "id": email_id,
+                "email": email_info["email"],
+                "created_at": email_info["created_at"]
+            }
+            # 如果存在auto_failure标记，添加到结果中
+            if "auto_failure" in email_info:
+                request_data["auto_failure"] = email_info["auto_failure"]
+            result.append(request_data)
+        elif email_info["status"] == "failed":
+            # 返回失败状态的请求，让前端知道验证失败
             result.append({
                 "id": email_id,
-                "email": email_info.get("email"),
-                "created_at": email_info.get("created_at")
+                "email": email_info["email"],
+                "created_at": email_info["created_at"],
+                "status": "failed",
+                "message": email_info.get("message", "验证码获取失败")
             })
+            # 返回后从字典中删除，避免重复通知
+            get_email_code.pending_verification_codes.pop(email_id, None)
     
     return {
         "success": True,
@@ -1559,6 +1608,30 @@ async def submit_verification_code(code_data: Dict):
         "success": True,
         "message": "验证码已提交"
     }
+
+@app.get("/verification/clear", tags=["Verification"])
+async def clear_verification_requests():
+    """清理所有待处理的验证码请求"""
+    try:
+        count = 0
+        for email_id, request_info in list(get_email_code.pending_verification_codes.items()):
+            if request_info["status"] == "pending":
+                get_email_code.pending_verification_codes.pop(email_id, None)
+                count += 1
+        
+        info(f"已清理 {count} 个待处理的验证码请求")
+        
+        return {
+            "success": True,
+            "message": f"已清理 {count} 个待处理的验证码请求"
+        }
+    except Exception as e:
+        error(f"清理验证码请求失败: {str(e)}")
+        error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": f"清理验证码请求失败: {str(e)}"
+        }
 
 
 if __name__ == "__main__":

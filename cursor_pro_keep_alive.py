@@ -225,8 +225,13 @@ def sign_up_account(browser, tab, account_info):
         info("注册限制")
         return "SIGNUP_RESTRICTED"
 
-    # 创建邮件处理器，传入自定义邮箱
-    email_handler = EmailVerificationHandler(custom_email=account_info["email"])
+    # 判断是否为自定义邮箱注册场景
+    is_custom_email_registration = account_info.get("is_custom_registration", False)
+        
+    # 创建邮件处理器，只在自定义邮箱注册场景下传入邮箱参数
+    email_handler = EmailVerificationHandler(
+        custom_email=account_info["email"] if is_custom_email_registration else None
+    )
     i = 0
     while i < 5:
         try:
@@ -241,15 +246,20 @@ def sign_up_account(browser, tab, account_info):
                 global EMAIL_CODE_TYPE
                 # 获取当前的EMAIL_CODE_TYPE值
                 local_email_code_type = EMAIL_CODE_TYPE
-                if account_info["email"] != f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}":
-                    info(f"检测到使用自定义邮箱 {account_info['email']}，确保使用手动输入验证码")
-                    # 使用自定义邮箱时确保使用手动输入
-                    if EMAIL_CODE_TYPE != "INPUT":
-                        EMAIL_CODE_TYPE = "INPUT"
                 
-                # 切换到邮箱标签页获取验证码
+                if is_custom_email_registration:
+                    info(f"检测到自定义邮箱注册场景，使用手动输入验证码模式")
+                    # 自定义邮箱注册场景确保使用手动输入
+                    if EMAIL_CODE_TYPE != "INPUT":
+                        # 临时切换为手动输入模式，在获取验证码完成后会恢复原值
+                        EMAIL_CODE_TYPE = "INPUT"
+                else:
+                    info(f"检测到任务注册场景，使用配置的验证码获取方式: {EMAIL_CODE_TYPE}")
+                
+                # 获取验证码 - 对于自定义邮箱，EmailVerificationHandler会直接进入手动输入模式
+                # 不会尝试从临时邮箱服务获取验证码
                 code = email_handler.get_verification_code(
-                    source_email=account_info["email"]
+                    source_email=account_info["email"] if is_custom_email_registration else None
                 )
                 
                 # 如果临时修改了EMAIL_CODE_TYPE，恢复原值
@@ -258,7 +268,14 @@ def sign_up_account(browser, tab, account_info):
                 
                 if code is None:
                     info("未获取到验证码...系统异常，正在退出....")
-                    return "EMAIL_GET_CODE_FAILED"
+                    return "EMAIL_VERIFICATION_FAILED"
+                
+                # 在自动获取验证码失败时可能已转为手动输入模式
+                if not is_custom_email_registration and EMAIL_CODE_TYPE != "INPUT":
+                    info(f"成功获取到验证码: {code}，继续注册流程")
+                else:
+                    info(f"通过手动输入获取到验证码: {code}，继续注册流程")
+                
                 info(f"输入验证码: {code}")
                 i = 0
                 for digit in code:
@@ -447,15 +464,17 @@ def main(custom_email=None):
     try:
         # 如果使用自定义邮箱，切换验证码获取模式为手动输入
         if custom_email:
-            info(f"使用自定义邮箱 {custom_email}，切换为手动输入验证码模式")
+            info(f"使用自定义邮箱注册场景 {custom_email}，切换为手动输入验证码模式")
             EMAIL_CODE_TYPE = "INPUT"
+        else:
+            info(f"使用任务注册场景，使用配置的验证码获取方式: {EMAIL_CODE_TYPE}")
         
         # 初始化邮箱验证处理器时传入自定义邮箱
         email_handler = EmailVerificationHandler(custom_email=custom_email)
         if email_handler.check():
             info('邮箱服务连接正常，开始注册!')
         else:
-            if EMAIL_CODE_TYPE == "API":
+            if EMAIL_CODE_TYPE == "API" and not custom_email:
                 error('邮箱服务连接失败，并且验证码为API获取，结束注册!')
                 return False
             else:
@@ -468,8 +487,15 @@ def main(custom_email=None):
             try:
                 # 使用自定义邮箱或生成新邮箱
                 account_info = email_generator.get_account_info(email=custom_email)
+                
+                # 标记是否为自定义邮箱注册场景
+                if custom_email:
+                    account_info["is_custom_registration"] = True
+                else:
+                    account_info["is_custom_registration"] = False
+                
                 info(
-                    f"初始化账号信息成功 => 邮箱: {account_info['email']}, 用户名: {account_info['first_name']}, 密码: {account_info['password']}"
+                    f"初始化账号信息成功 => 邮箱: {account_info['email']}, 用户名: {account_info['first_name']}, 密码: {account_info['password']}, 场景: {'自定义邮箱' if account_info['is_custom_registration'] else '任务注册'}"
                 )
 
                 signup_tab = browser.new_tab(LOGIN_URL)

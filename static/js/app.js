@@ -63,6 +63,9 @@ function initializeApplication() {
   // 绑定模态框内按钮事件
   bindModalEvents();
 
+  // 绑定验证码相关事件
+  bindVerificationEvents();
+
   // 为所有模态框绑定全局事件
   setupGlobalModalEvents();
 
@@ -77,9 +80,6 @@ function initializeApplication() {
 
   // 绑定所有事件处理函数
   bindEventHandlers();
-
-  // 启动验证码请求检查
-  startVerificationCodeCheck();
 
   // 初始清理背景遮罩，确保页面加载时没有残留
   cleanupModalBackdrops();
@@ -234,14 +234,20 @@ function bindEventHandlers() {
   // 编辑配置按钮点击事件
   $('#edit-config-btn')
     .off('click')
-    .on('click', function () {
+    .on('click', function (e) {
+      // 阻止事件冒泡，防止可能的表单提交
+      e.preventDefault();
+      e.stopPropagation();
       enableConfigForm(true);
     });
 
   // 取消配置编辑按钮点击事件
   $('#cancel-config-btn')
     .off('click')
-    .on('click', function () {
+    .on('click', function (e) {
+      // 阻止事件冒泡，防止可能的表单提交
+      e.preventDefault();
+      e.stopPropagation();
       enableConfigForm(false);
       loadConfig(); // 重新加载原始配置
     });
@@ -1003,6 +1009,12 @@ function startTaskManually() {
       if (data.success) {
         showAlert('定时任务已成功启动', 'success');
         checkTaskStatus();
+
+        // 显示验证码提示框
+        $('#verification-tip-alert').show();
+
+        // 启动验证码检查
+        startVerificationCodeCheck();
       } else {
         showAlert(`启动任务失败: ${data.message || '未知错误'}`, 'danger');
       }
@@ -1026,12 +1038,18 @@ function stopTaskManually() {
       if (data.success) {
         showAlert('定时任务已成功停止', 'success');
 
+        // 隐藏验证码提示框
+        $('#verification-tip-alert').hide();
+
         // 立即更新任务状态 - 添加这段代码
         fetch('/registration/status')
           .then((res) => res.json())
           .then((statusData) => {
             updateTaskStatusUI(statusData);
           });
+
+        // 停止验证码检查
+        stopVerificationCodeCheck();
       } else {
         showAlert(`停止任务失败: ${data.message || '未知错误'}`, 'danger');
       }
@@ -1123,6 +1141,9 @@ function maskPassword(password) {
 
 // 页面加载动画
 document.addEventListener('DOMContentLoaded', function () {
+  // 默认隐藏验证码提示框
+  $('#verification-tip-alert').hide();
+
   // 修改动画类添加代码，删除对已删除元素的引用
   const elements = [
     { selector: '.card', animation: 'animate__fadeIn', delay: 0.2 },
@@ -1583,6 +1604,9 @@ function loadConfig() {
           $('#zmail-fields').show();
         }
 
+        // 配置加载完毕后，立即更新任务状态显示
+        checkTaskStatus();
+
         hideLoading();
       } else {
         showAlert('danger', '加载配置失败: ' + response.message);
@@ -1608,7 +1632,8 @@ function toggleProxySettings() {
 // 添加配置保存回调，支持重启
 function saveConfig() {
   showLoading();
-  const isDynamicUA = $(this).prop('checked');
+  // 修复：不依赖this上下文，直接获取动态UA的状态
+  const isDynamicUA = $('#dynamic-useragent').is(':checked');
   const configData = {
     BROWSER_HEADLESS: $('#browser-headless').val() === 'true',
     DYNAMIC_USERAGENT: isDynamicUA,
@@ -1638,6 +1663,9 @@ function saveConfig() {
     success: function (response) {
       hideLoading();
       if (response.success) {
+        // 保存成功后立即更新任务状态显示
+        checkTaskStatus();
+
         // 添加重启询问提示
         showConfirmDialog(
           '配置已成功保存',
@@ -2218,6 +2246,9 @@ function registerWithCustomEmail() {
   showCustomRegistrationStatus('注册中，请稍候...', 'info');
   $('#custom-registration').prop('disabled', true);
 
+  // 启动验证码检查
+  startVerificationCodeCheck();
+
   // 调用API
   $.ajax({
     url: '/registration/custom',
@@ -2232,9 +2263,13 @@ function registerWithCustomEmail() {
         // 刷新账号列表
         setTimeout(function () {
           loadAccounts(1, itemsPerPage);
+          // 注册成功后停止验证码检查
+          stopVerificationCodeCheck();
         }, 2000);
       } else {
         showCustomRegistrationStatus('注册失败: ' + response.message, 'danger');
+        // 注册失败后停止验证码检查
+        stopVerificationCodeCheck();
       }
       $('#custom-registration').prop('disabled', false);
     },
@@ -2248,6 +2283,17 @@ function registerWithCustomEmail() {
       }
       showCustomRegistrationStatus('注册失败: ' + message, 'danger');
       $('#custom-registration').prop('disabled', false);
+      // 注册错误后停止验证码检查
+      stopVerificationCodeCheck();
+    },
+    // 添加complete回调，确保无论如何都会停止验证码检查
+    complete: function () {
+      // 在所有请求完成后（无论成功或失败）确保验证码检查已停止
+      setTimeout(() => {
+        if (verificationCheckTimer) {
+          stopVerificationCodeCheck();
+        }
+      }, 1000);
     },
   });
 }
@@ -2360,6 +2406,9 @@ function startVerificationCodeCheck() {
     clearInterval(verificationCheckTimer);
   }
 
+  // 显示验证码提示框
+  $('#verification-tip-alert').show();
+
   // 每5秒检查一次是否有等待验证码输入的请求
   verificationCheckTimer = setInterval(checkPendingVerification, 5000);
 }
@@ -2368,6 +2417,31 @@ function stopVerificationCodeCheck() {
   if (verificationCheckTimer) {
     clearInterval(verificationCheckTimer);
     verificationCheckTimer = null;
+
+    // 隐藏验证码提示框
+    $('#verification-tip-alert').hide();
+
+    // 调用后端接口清理所有待处理的验证码请求
+    fetch('/verification/clear')
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          console.log('已清理待处理的验证码请求:', data.message);
+
+          // 如果当前有打开的验证码输入弹窗，关闭它
+          if ($('#codeInputModal').hasClass('show')) {
+            const modalElement = document.getElementById('codeInputModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+              modalInstance.hide();
+              setTimeout(() => cleanupModalBackdrops(), 300);
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        console.error('清理验证码请求失败:', error);
+      });
   }
 }
 
@@ -2386,7 +2460,20 @@ function checkPendingVerification() {
     })
     .then((data) => {
       if (data.success && data.data && data.data.length > 0) {
-        // 找到等待验证码输入的请求，显示模态框
+        // 检查是否有失败的验证码请求
+        const failedRequest = data.data.find((req) => req.status === 'failed');
+        if (failedRequest) {
+          // 显示验证失败信息并更新内容，但不停止验证码检查，因为系统会转为手动模式
+          showAlert(
+            `自动获取验证码失败: ${
+              failedRequest.message || '请检查邮箱设置'
+            }。系统已自动转为手动输入模式，请等待验证码输入弹窗。`,
+            'warning'
+          );
+          return;
+        }
+
+        // 处理正常的验证码请求
         const pendingRequest = data.data[0]; // 取第一个请求
 
         // 确保没有其他模态框正在显示
@@ -2420,6 +2507,24 @@ function showVerificationModal(pendingRequest) {
     $('#pendingEmailId').val(pendingRequest.id);
     // 清空验证码输入框
     $('#verificationCode').val('');
+
+    // 判断是否是自动失败后的手动输入请求
+    const isAutoFailureCase =
+      pendingRequest.hasOwnProperty('auto_failure') &&
+      pendingRequest.auto_failure === true;
+
+    // 设置模态框标题和内容，根据场景提供不同提示
+    if (pendingRequest.email.includes('@') && isAutoFailureCase) {
+      // 自动获取失败后的手动输入
+      $('#codeInputModalLabel').text('任务注册 - 手动输入验证码');
+      $('#verification-message').html(
+        '<div class="alert alert-warning mb-3">自动获取验证码失败，请手动输入验证码以继续注册流程。</div>'
+      );
+    } else if (pendingRequest.email.includes('@')) {
+      // 普通的手动输入验证码
+      $('#codeInputModalLabel').text('请输入验证码');
+      $('#verification-message').html('');
+    }
 
     // 显示模态框前先清理可能存在的背景
     cleanupModalBackdrops();
@@ -2590,7 +2695,19 @@ function submitVerificationCode() {
           setTimeout(() => cleanupModalBackdrops(), 300);
 
           // 如果验证成功，可以重新加载账号列表
-          setTimeout(fetchAccounts, 2000);
+          showAlert('等待账号注册完成...', 'info');
+          setTimeout(fetchAccounts, 10000); // 增加等待时间到10秒
+
+          // 任务可能已经完成，检查是否需要隐藏提示
+          fetch('/registration/status')
+            .then((res) => res.json())
+            .then((status) => {
+              if (status.task_status === 'stopped') {
+                $('#verification-tip-alert').hide();
+                stopVerificationCodeCheck();
+              }
+            })
+            .catch((error) => console.error('获取任务状态失败:', error));
         }
       } else {
         showAlert(`提交验证码失败: ${data.message || '未知错误'}`, 'danger');
@@ -2645,20 +2762,18 @@ function fetchAccounts() {
     })
     .then((data) => {
       if (data.success) {
-        // 保存所有账号数据
-        allAccounts = data.accounts || [];
+        // 保存账号数据
+        accounts = data.data || [];
 
-        // 应用过滤和排序
-        applyFiltersAndSort();
+        // 直接更新账号表格，不需要额外的过滤和排序
+        updateAccountsTable(accounts);
 
-        // 更新分页显示
-        $('#total-accounts').text(filteredAccounts.length);
-
-        // 更新显示
-        renderAccountsTable();
+        // 更新分页信息
+        updatePagination(data.pagination.page, data.pagination.total_pages);
+        $('#total-accounts').text(data.pagination.total_count);
       } else {
         showAlert(
-          `加载账号失败: ${data.message || '服务器返回错误'}`,
+          '加载账号失败: ' + (data.message || '服务器返回错误'),
           'danger'
         );
         console.error('加载账号数据失败:', data);
@@ -2666,7 +2781,7 @@ function fetchAccounts() {
     })
     .catch((error) => {
       console.error('获取账号列表时发生错误:', error);
-      showAlert(`加载账号失败: ${error.message}`, 'danger');
+      showAlert('加载账号失败: ' + error.message, 'danger');
 
       // 如果是网络错误，显示更详细的提示
       if (
