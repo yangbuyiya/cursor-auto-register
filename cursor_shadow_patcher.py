@@ -40,17 +40,16 @@ def randomuuid(randomuuid_str):
     return randomuuid_str
 
 
-def random_mac():
+def random_mac(macaddr: str = None):
     """生成随机MAC地址"""
-    mac = [
-        0x00,
-        0x16,
-        0x3E,
-        random.randint(0x00, 0x7F),
-        random.randint(0x00, 0xFF),
-        random.randint(0x00, 0xFF),
-    ]
-    return ":".join(map(lambda x: "%02x" % x, mac))
+    if not macaddr:
+        while not macaddr or macaddr in (
+            "00:00:00:00:00:00",
+            "ff:ff:ff:ff:ff:ff",
+            "ac:de:48:00:11:22",
+        ):
+            macaddr = ":".join([f"{random.randint(0, 255):02X}" for _ in range(6)])
+    return macaddr
 
 
 def load(file_path: pathlib.Path):
