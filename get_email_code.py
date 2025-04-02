@@ -7,6 +7,9 @@ def warn(message):
 import time
 import re
 import requests
+import os
+import uuid
+from datetime import datetime
 from config import (
     EMAIL_USERNAME,
     EMAIL_DOMAIN,
@@ -17,13 +20,22 @@ from config import (
     EMAIL_PROXY_ADDRESS,
     EMAIL_PROXY_ENABLED,
     EMAIL_API,
-    EMAIL_CODE_TYPE
+    EMAIL_CODE_TYPE,
+    EMAIL_DOMAINS
 )
 
+# 声明全局变量用于存储验证码请求
+pending_verification_codes = {}
 
 class EmailVerificationHandler:
-    def __init__(self, username=None, domain=None, pin=None, use_proxy=False):
+    def __init__(self, username=None, domain=None, pin=None, use_proxy=False, custom_email=None):
         self.email = EMAIL_TYPE
+        self.custom_email = custom_email
+        
+        # 如果提供了自定义邮箱，则解析它
+        if custom_email and '@' in custom_email:
+            username, domain = custom_email.split('@', 1)
+        
         self.username = username or EMAIL_USERNAME
         self.domain = domain or EMAIL_DOMAIN
         self.session = requests.Session()
@@ -51,7 +63,19 @@ class EmailVerificationHandler:
             info(f"已启用代理: {EMAIL_PROXY_ADDRESS}")
 
     def check(self):
-        mail_list_url = f"https://tempmail.plus/api/mails?email={self.username}%40{self.domain}&limit=20&epin={self.pin}"
+        # 如果是自定义邮箱场景，跳过邮箱连接检查，直接返回成功
+        if self.custom_email is not None:
+            info(f"自定义邮箱注册场景 {self.custom_email}，跳过临时邮箱连接检查")
+            return True
+            
+        # 如果有自定义邮箱，优先使用它
+        username = self.username
+        domain = self.domain
+        if self.custom_email and '@' in self.custom_email:
+            username, domain = self.custom_email.split('@', 1)
+            info(f"使用自定义邮箱进行连接检查: {username}@{domain}")
+        
+        mail_list_url = f"https://tempmail.plus/api/mails?email={username}%40{domain}&limit=20&epin={self.pin}"
         try:
             # 增加超时时间并添加错误重试
             for retry in range(3):
@@ -97,11 +121,21 @@ class EmailVerificationHandler:
         Returns:
             str: 验证码或None
         """
-        # 如果邮箱验证码获取方式为输入，则直接返回输入的验证码
-        if EMAIL_CODE_TYPE == "INPUT":
-            info("EMAIL_CODE_TYPE设为INPUT，跳过自动获取，直接手动输入")
-            return self.prompt_manual_code()
+        # 记录当前的验证码获取模式和邮箱信息
+        info(f"验证码获取模式: {EMAIL_CODE_TYPE}, 使用邮箱: {source_email}")
         
+        # 通过self.custom_email判断是否为自定义邮箱注册场景，而不是比较source_email
+        is_custom_email_scenario = self.custom_email is not None
+        
+        # 如果是INPUT模式或者是自定义邮箱场景，直接进入手动输入
+        if EMAIL_CODE_TYPE == "INPUT" or is_custom_email_scenario:
+            if is_custom_email_scenario:
+                info("检测到自定义邮箱注册场景，直接使用手动输入验证码模式")
+            else:
+                info("EMAIL_CODE_TYPE设为INPUT，跳过自动获取，直接手动输入")
+            return self.prompt_manual_code(source_email)
+        
+        # 以下是自动获取验证码的逻辑，只有在EMAIL_CODE_TYPE不是INPUT且不是自定义邮箱场景时才会执行
         max_retries = max_retries or EMAIL_VERIFICATION_RETRIES
         wait_time = wait_time or EMAIL_VERIFICATION_WAIT
         info(f"开始获取邮箱验证码=>最大重试次数:{max_retries}, 等待时间:{wait_time}")
@@ -110,7 +144,7 @@ class EmailVerificationHandler:
         if self.email not in ["tempemail", "zmail"]:
             error(f"不支持的邮箱类型: {self.email}，支持的类型为: tempemail, zmail")
             warn("自动切换到手动输入模式")
-            return self.prompt_manual_code()
+            return self.prompt_manual_code(source_email)
         
         for attempt in range(max_retries):
             try:
@@ -139,23 +173,122 @@ class EmailVerificationHandler:
                 else:
                     error(f"已达到最大重试次数({max_retries})，获取验证码失败")
 
-        # 所有自动尝试都失败后，询问是否手动输入
+        # Web模式下，更新等待验证码请求状态为失败
+        web_mode = os.environ.get("CURSOR_AUTO_REGISTER_WEB", "").lower() == "true"
+        if web_mode and source_email:
+            # 查找该邮箱的待处理验证码请求
+            global pending_verification_codes
+            for email_id, request_info in list(pending_verification_codes.items()):
+                if request_info.get("email") == source_email and request_info.get("status") == "pending":
+                    # 更新状态为失败
+                    pending_verification_codes[email_id]["status"] = "failed"
+                    pending_verification_codes[email_id]["message"] = f"验证码获取失败，已尝试{max_retries}次"
+                    info(f"已更新验证码请求 {email_id} 状态为失败")
+                    break
+
+        # 在Web模式下，自动获取失败后转为前端手动输入，而不直接返回失败
+        if web_mode:
+            info("自动获取验证码失败，转为前端手动输入模式")
+            return self.prompt_manual_code(source_email)
+            
+        # 命令行模式下询问手动输入
         response = input("自动获取验证码失败，是否手动输入? (y/n): ").lower()
         if response == 'y':
-            return self.prompt_manual_code()
+            return self.prompt_manual_code(source_email)
         return None
 
-    # 手动输入验证码
-    def prompt_manual_code(self):
-        """手动输入验证码"""
-        info("自动获取验证码失败，开始手动输入验证码。")
-        code = input("输入6位数字验证码: ").strip()
-        return code
+    # 手动输入验证码 - 添加前端输入支持
+    def prompt_manual_code(self, source_email=None):
+        """手动输入验证码，支持前端输入"""
+        email_display = source_email if source_email else f"{self.username}@{self.domain}"
+        info("=============手动输入验证码模式=============")
+        info(f"请查看邮箱 [{email_display}] 中的验证码")
+        
+        # 检查是否有CURSOR_AUTO_REGISTER_WEB环境变量，表示是否通过Web界面运行
+        web_mode = os.environ.get("CURSOR_AUTO_REGISTER_WEB", "").lower() == "true"
+        
+        if web_mode:
+            info("检测到Web模式，使用前端验证码输入")
+            return self.prompt_manual_code_web(email_display)
+        else:
+            info("命令行模式，使用控制台输入验证码")
+            info("通常验证码为6位数字，在邮件正文中")
+            code = input("请输入收到的验证码: ").strip()
+            info(f"已输入验证码: {code}")
+            return code
+    
+    # 前端验证码输入方法
+    def prompt_manual_code_web(self, source_email):
+        """在Web界面请求验证码输入"""
+        # 生成唯一ID
+        email_id = str(uuid.uuid4())
+        
+        # 判断是否是自定义邮箱场景
+        is_custom_email = self.custom_email is not None
+        
+        # 判断是否是自动获取失败后转为手动输入
+        # 修正判断逻辑：自定义邮箱场景不应该认为是自动获取失败
+        is_auto_failure = EMAIL_CODE_TYPE != "INPUT" and not is_custom_email
+        
+        # 存储到等待字典中
+        global pending_verification_codes
+        pending_verification_codes[email_id] = {
+            "email": source_email,
+            "status": "pending",
+            "created_at": datetime.now().isoformat(),
+            "code": None,
+            "auto_failure": is_auto_failure  # 标记是否是自动获取失败后的手动输入
+        }
+        
+        if is_auto_failure:
+            info(f"已创建验证码请求 ID: {email_id}，这是在自动获取失败后转为手动输入")
+        elif is_custom_email:
+            info(f"已创建验证码请求 ID: {email_id}，需要您检查自定义邮箱并输入验证码")
+        else:
+            info(f"已创建验证码请求 ID: {email_id}，等待前端输入验证码")
+        
+        # 循环等待验证码输入，最多等待180秒
+        start_time = time.time()
+        while time.time() - start_time < 180:
+            # 检查是否已提交验证码
+            if email_id in pending_verification_codes and pending_verification_codes[email_id]["status"] == "submitted":
+                code = pending_verification_codes[email_id]["code"]
+                info(f"前端已提交验证码: {code}")
+                # 删除已使用的记录
+                pending_verification_codes.pop(email_id, None)
+                return code
+            
+            # 等待1秒再检查
+            time.sleep(1)
+        
+        # 超时，从等待字典中移除
+        pending_verification_codes.pop(email_id, None)
+        info("验证码输入超时")
+        return None
 
     def get_tempmail_email_code(self, source_email=None):
+        # 如果是自定义邮箱场景，直接返回None，不尝试通过临时邮箱API获取验证码
+        if self.custom_email is not None:
+            info("自定义邮箱注册场景不应通过临时邮箱API获取验证码，跳过此步骤")
+            return None, None
+            
         info("开始获取邮件列表")
-        # 获取邮件列表
-        mail_list_url = f"https://tempmail.plus/api/mails?email={self.username}%40{self.domain}&limit=20&epin={self.pin}"
+        
+        # 确保在任务注册场景(非自定义邮箱)下使用配置邮箱
+        # 仅当source_email存在且与配置邮箱不同时才使用source_email(自定义邮箱场景)
+        using_custom_email = (source_email is not None and 
+                            '@' in source_email and 
+                            source_email != f"{self.username}@{self.domain}")
+        
+        if using_custom_email:
+            username, domain = source_email.split('@', 1)
+            mail_list_url = f"https://tempmail.plus/api/mails?email={username}%40{domain}&limit=20&epin={self.pin}"
+            info(f"使用自定义邮箱获取验证码: {source_email}")
+        else:
+            # 任务注册场景，使用配置邮箱
+            mail_list_url = f"https://tempmail.plus/api/mails?email={self.username}%40{self.domain}&limit=20&epin={self.pin}"
+            info(f"使用配置邮箱获取验证码: {self.username}@{self.domain}")
+        
         try:
             # 增加错误重试和超时时间
             for retry in range(3):
@@ -188,8 +321,15 @@ class EmailVerificationHandler:
             if not first_id:
                 return None, None
             info(f"开始获取邮件详情: {first_id}")
-            # 获取具体邮件内容
-            mail_detail_url = f"https://tempmail.plus/api/mails/{first_id}?email={self.username}%40{self.domain}&epin={self.pin}"
+            
+            # 使用与邮件列表相同的邮箱账号获取邮件详情
+            if using_custom_email:
+                # 自定义邮箱场景
+                mail_detail_url = f"https://tempmail.plus/api/mails/{first_id}?email={username}%40{domain}&epin={self.pin}"
+            else:
+                # 任务注册场景，使用配置邮箱
+                mail_detail_url = f"https://tempmail.plus/api/mails/{first_id}?email={self.username}%40{self.domain}&epin={self.pin}"
+            
             try:
                 mail_detail_response = self.session.get(
                     mail_detail_url, timeout=10
@@ -212,17 +352,20 @@ class EmailVerificationHandler:
             # 从邮件文本中提取6位数字验证码
             mail_text = mail_detail_data.get("text", "")
 
-            # 如果提供了source_email，确保邮件内容中包含该邮箱地址
-            if source_email and source_email.lower() not in mail_text.lower():
+            # 在自定义邮箱场景下检查邮件内容包含该邮箱，任务注册场景不需要检查
+            if using_custom_email and source_email and source_email.lower() not in mail_text.lower():
                 error(f"邮件内容不包含指定的邮箱地址: {source_email}")
             else:
-                info(f"邮件内容包含指定的邮箱地址: {source_email}")
+                if using_custom_email:
+                    info(f"邮件内容包含指定的邮箱地址: {source_email}")
+                else:
+                    info(f"使用配置邮箱获取验证码，不需要检查邮件内容")
 
             code_match = re.search(r"(?<![a-zA-Z@.])\b\d{6}\b", mail_text)
 
             if code_match:
-                # 清理邮件
-                self._cleanup_mail(first_id)
+                # 清理邮件时使用正确的邮箱
+                self._cleanup_mail(first_id, source_email if using_custom_email else None)
                 return code_match.group(), first_id
             return None, None
         except requests.exceptions.Timeout:
@@ -235,11 +378,27 @@ class EmailVerificationHandler:
             error(f"获取邮件列表发生错误: {str(e)}")
             return None, None
 
-    def _cleanup_mail(self, first_id):
+    def _cleanup_mail(self, first_id, source_email=None):
+        # 如果提供了source_email且不为空，则判断是否为自定义邮箱场景
+        using_custom_email = (source_email is not None and 
+                            '@' in source_email and 
+                            source_email != f"{self.username}@{self.domain}")
+        
+        # 设置用于清理邮件的用户名和域名
+        if using_custom_email:
+            # 自定义邮箱场景
+            username, domain = source_email.split('@', 1)
+            info(f"使用自定义邮箱清理邮件: {username}@{domain}")
+        else:
+            # 任务注册场景，使用配置邮箱
+            username = self.username
+            domain = self.domain
+            info(f"使用配置邮箱清理邮件: {username}@{domain}")
+        
         # 构造删除请求的URL和数据
         delete_url = "https://tempmail.plus/api/mails/"
         payload = {
-            "email": f"{self.username}@{self.domain}",
+            "email": f"{username}@{domain}",
             "first_id": first_id,
             "epin": self.pin,
         }
@@ -299,15 +458,44 @@ class EmailVerificationHandler:
             
     # 获取zmail邮箱验证码
     def get_zmail_email_code(self, source_email=None):
+        # 如果是自定义邮箱场景，直接返回None，不尝试通过zmail API获取验证码
+        if self.custom_email is not None:
+            info("自定义邮箱注册场景不应通过zmail API获取验证码，跳过此步骤")
+            return None, None
+            
         info("开始获取邮件列表")
+        
+        # 确保在任务注册场景(非自定义邮箱)下使用配置邮箱
+        # 仅当source_email存在且与配置邮箱不同时才使用source_email(自定义邮箱场景)
+        using_custom_email = (source_email is not None and 
+                            '@' in source_email and 
+                            source_email != f"{self.username}@{self.domain}")
+        
         # 获取邮件列表
-        username = source_email.split("@")[0]
+        if using_custom_email:
+            # 自定义邮箱场景
+            email_to_use = source_email
+            info(f"使用自定义邮箱获取验证码: {email_to_use}")
+        else:
+            # 任务注册场景，使用配置邮箱
+            email_to_use = f"{self.username}@{self.domain}"
+            info(f"使用配置邮箱获取验证码: {email_to_use}")
+        
+        if '@' not in email_to_use:
+            error(f"邮箱格式错误: {email_to_use}")
+            return None, None
+        
+        username = email_to_use.split("@")[0]
+        info(f"使用邮箱获取验证码: {email_to_use}, 用户名: {username}")
+        
         mail_list_url = f"{EMAIL_API}/api/mailboxes/{username}/emails"
-        proxy = {
+        
+        if EMAIL_PROXY_ENABLED:
+            proxy = {
                 "http": f"{EMAIL_PROXY_ADDRESS}",
                 "https": f"{EMAIL_PROXY_ADDRESS}",
             }
-        self.session.proxies.update(proxy)
+            self.session.proxies.update(proxy)
         try:
             mail_list_response = self.session.get(
                 mail_list_url, timeout=10000

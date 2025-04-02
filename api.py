@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, UploadFile, Request
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlalchemy import select, func, delete, desc
 from pathlib import Path
 from database import get_session, AccountModel, AccountUsageRecordModel, init_db
@@ -29,6 +29,15 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import json
 import time
+import uuid
+import aiosqlite
+import sqlite3
+import logging
+
+# 从get_email_code.py导入验证码请求字典
+from get_email_code import EmailVerificationHandler
+# 修改为直接访问get_email_code模块
+import get_email_code
 
 # 全局状态追踪
 registration_status = {
@@ -47,6 +56,9 @@ static_path.mkdir(exist_ok=True)  # 确保目录存在
 
 # 全局任务存储
 background_tasks = {"registration_task": None}
+
+# 添加用于存储等待验证码的邮箱信息的全局字典
+# pending_verification_codes = {}
 
 
 # 添加lifespan管理器，在应用启动时初始化数据库
@@ -168,9 +180,9 @@ async def run_registration():
                         info("注册失败")
                 except SystemExit:
                     # 捕获 SystemExit 异常，这是注册脚本正常退出的方式
-                    info("注册脚本正常退出")
-                    if registration_status["last_status"] != "error":
-                        registration_status["last_status"] = "completed"
+                    info("注册脚本通过sys.exit退出")
+                    registration_status["successful_runs"] += 1
+                    registration_status["last_status"] = "completed"
                 except Exception as e:
                     error(f"注册过程执行出错: {str(e)}")
                     error(traceback.format_exc())
@@ -389,10 +401,25 @@ async def get_accounts(
             result = await session.execute(query)
             accounts = result.scalars().all()
             
+            # 转换为可序列化的数据，确保包含id字段
+            accounts_data = []
+            for account in accounts:
+                account_dict = {
+                    "id": account.id,  # 确保包含id字段
+                    "email": account.email,
+                    "password": account.password,
+                    "token": account.token,
+                    "user": account.user if hasattr(account, "user") else "",
+                    "usage_limit": account.usage_limit,
+                    "created_at": account.created_at,
+                    "status": account.status
+                }
+                accounts_data.append(account_dict)
+            
             # 构建分页响应
             return {
                 "success": True,
-                "data": accounts,
+                "data": accounts_data,  # 使用序列化后的数据
                 "pagination": {
                     "page": page,
                     "per_page": per_page,
@@ -702,6 +729,12 @@ async def stop_registration():
         background_tasks["registration_task"] = None
         registration_status["is_running"] = False
         registration_status["last_status"] = "manually stopped"
+        
+        # 清理所有待处理的验证码请求
+        for email_id, request_info in list(get_email_code.pending_verification_codes.items()):
+            if request_info["status"] == "pending":
+                get_email_code.pending_verification_codes.pop(email_id, None)
+                info(f"已清理待处理的验证码请求: {email_id}")
 
         return {"success": True, "message": "Registration task stopped successfully"}
     except Exception as e:
@@ -1424,7 +1457,205 @@ async def restart_service():
         return {"success": False, "message": f"重启服务失败: {str(e)}"}
 
 
+class CustomRegistrationRequest(BaseModel):
+    email: str
+    
+@app.post("/registration/custom", tags=["Registration"])
+async def register_with_custom_email(request: CustomRegistrationRequest):
+    """使用自定义邮箱注册Cursor账号"""
+    global registration_status
+    
+    if registration_status["is_running"]:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "message": "当前有注册任务正在运行，请先停止当前任务"
+            }
+        )
+    
+    count = await get_active_account_count()
+    if count >= MAX_ACCOUNTS:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "message": f"已达到最大账号数量 ({count}/{MAX_ACCOUNTS})"
+            }
+        )
+    
+    # 验证邮箱格式
+    if "@" not in request.email:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "success": False,
+                "message": "邮箱格式不正确，请提供正确的邮箱地址"
+            }
+        )
+    
+    try:
+        info(f"开始使用自定义邮箱注册: {request.email}")
+        
+        # 调用注册函数，传入自定义邮箱
+        try:
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, lambda: register_account(custom_email=request.email)
+            )
+            
+            # 处理布尔值情况 - True表示成功，False表示失败
+            if result is True:
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "message": f"使用邮箱 {request.email} 注册成功"
+                    }
+                )
+            elif result is False:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "message": f"使用邮箱 {request.email} 注册失败，请检查日志获取详细信息"
+                    }
+                )
+            # 字符串状态码处理
+            elif result == "SUCCESS":
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "message": f"使用邮箱 {request.email} 注册成功"
+                    }
+                )
+            elif result == "EMAIL_VERIFICATION_FAILED":
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "验证码获取失败，请检查邮箱是否正确或尝试其他邮箱"
+                    }
+                )
+            else:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "success": False,
+                        "message": f"使用邮箱 {request.email} 注册失败: {result}"
+                    }
+                )
+        except SystemExit:
+            # 处理注册函数通过sys.exit退出的情况
+            info("注册函数通过sys.exit退出，可能已成功注册")
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "message": f"使用邮箱 {request.email} 注册过程完成，请检查账号列表"
+                }
+            )
+    except Exception as e:
+        error(f"使用自定义邮箱注册过程出错: {str(e)}")
+        error(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": f"注册过程出错: {str(e)}"
+            }
+        )
+
+
+@app.get("/verification/pending")
+async def check_pending_verification():
+    """检查是否有等待验证码输入的请求"""
+    result = []
+    
+    for email_id, email_info in get_email_code.pending_verification_codes.items():
+        if email_info["status"] == "pending":
+            request_data = {
+                "id": email_id,
+                "email": email_info["email"],
+                "created_at": email_info["created_at"]
+            }
+            # 如果存在auto_failure标记，添加到结果中
+            if "auto_failure" in email_info:
+                request_data["auto_failure"] = email_info["auto_failure"]
+            result.append(request_data)
+        elif email_info["status"] == "failed":
+            # 返回失败状态的请求，让前端知道验证失败
+            result.append({
+                "id": email_id,
+                "email": email_info["email"],
+                "created_at": email_info["created_at"],
+                "status": "failed",
+                "message": email_info.get("message", "验证码获取失败")
+            })
+            # 返回后从字典中删除，避免重复通知
+            get_email_code.pending_verification_codes.pop(email_id, None)
+    
+    return {
+        "success": True,
+        "data": result
+    }
+
+@app.post("/verification/submit")
+async def submit_verification_code(code_data: Dict):
+    """提交验证码"""
+    email_id = code_data.get("id")
+    code = code_data.get("code")
+    
+    if not email_id or not code:
+        return {
+            "success": False,
+            "message": "缺少必要参数"
+        }
+    
+    if email_id not in get_email_code.pending_verification_codes:
+        return {
+            "success": False,
+            "message": "未找到对应的验证请求"
+        }
+    
+    # 更新状态和验证码
+    get_email_code.pending_verification_codes[email_id]["status"] = "submitted"
+    get_email_code.pending_verification_codes[email_id]["code"] = code
+    
+    return {
+        "success": True,
+        "message": "验证码已提交"
+    }
+
+@app.get("/verification/clear", tags=["Verification"])
+async def clear_verification_requests():
+    """清理所有待处理的验证码请求"""
+    try:
+        count = 0
+        for email_id, request_info in list(get_email_code.pending_verification_codes.items()):
+            if request_info["status"] == "pending":
+                get_email_code.pending_verification_codes.pop(email_id, None)
+                count += 1
+        
+        info(f"已清理 {count} 个待处理的验证码请求")
+        
+        return {
+            "success": True,
+            "message": f"已清理 {count} 个待处理的验证码请求"
+        }
+    except Exception as e:
+        error(f"清理验证码请求失败: {str(e)}")
+        error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": f"清理验证码请求失败: {str(e)}"
+        }
+
+
 if __name__ == "__main__":
+    # 设置Web模式环境变量
+    os.environ["CURSOR_AUTO_REGISTER_WEB"] = "true"
+    
+    # 启动服务器
+    import uvicorn
+
     uvicorn.run(
         "api:app",
         host=API_HOST,

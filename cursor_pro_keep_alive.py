@@ -11,7 +11,9 @@ from config import (
     EMAIL_DOMAINS,
     REGISTRATION_MAX_RETRIES,
     EMAIL_TYPE,
-    EMAIL_CODE_TYPE
+    EMAIL_CODE_TYPE,
+    EMAIL_USERNAME,
+    EMAIL_DOMAIN
 )
 
 
@@ -182,7 +184,7 @@ def sign_up_account(browser, tab, account_info):
             if (
                     tab.ele("verify the user is human. Please try again.")
                     or tab.ele("Can't verify the user is human. Please try again.")
-                    or tab.ele("Can‘t verify the user is human. Please try again.")
+                    or tab.ele("Can't verify the user is human. Please try again.")
             ):
                 info("检测到turnstile验证失败，（IP问题、UA问题、域名问题）...正在重试...")
                 return "EMAIL_USED"
@@ -223,8 +225,13 @@ def sign_up_account(browser, tab, account_info):
         info("注册限制")
         return "SIGNUP_RESTRICTED"
 
-    # 创建邮件处理器
-    email_handler = EmailVerificationHandler()
+    # 判断是否为自定义邮箱注册场景
+    is_custom_email_registration = account_info.get("is_custom_registration", False)
+        
+    # 创建邮件处理器，只在自定义邮箱注册场景下传入邮箱参数
+    email_handler = EmailVerificationHandler(
+        custom_email=account_info["email"] if is_custom_email_registration else None
+    )
     i = 0
     while i < 5:
         try:
@@ -234,13 +241,41 @@ def sign_up_account(browser, tab, account_info):
                 break
             if tab.ele("@data-index=0"):
                 info("等待输入验证码...")
-                # 切换到邮箱标签页
+                
+                # 声明全局变量
+                global EMAIL_CODE_TYPE
+                # 获取当前的EMAIL_CODE_TYPE值
+                local_email_code_type = EMAIL_CODE_TYPE
+                
+                if is_custom_email_registration:
+                    info(f"检测到自定义邮箱注册场景，使用手动输入验证码模式")
+                    # 自定义邮箱注册场景确保使用手动输入
+                    if EMAIL_CODE_TYPE != "INPUT":
+                        # 临时切换为手动输入模式，在获取验证码完成后会恢复原值
+                        EMAIL_CODE_TYPE = "INPUT"
+                else:
+                    info(f"检测到任务注册场景，使用配置的验证码获取方式: {EMAIL_CODE_TYPE}")
+                
+                # 获取验证码 - 对于自定义邮箱，EmailVerificationHandler会直接进入手动输入模式
+                # 不会尝试从临时邮箱服务获取验证码
                 code = email_handler.get_verification_code(
-                    source_email=account_info["email"]
+                    source_email=account_info["email"] if is_custom_email_registration else None
                 )
+                
+                # 如果临时修改了EMAIL_CODE_TYPE，恢复原值
+                if EMAIL_CODE_TYPE != local_email_code_type:
+                    EMAIL_CODE_TYPE = local_email_code_type
+                
                 if code is None:
                     info("未获取到验证码...系统异常，正在退出....")
-                    return "EMAIL_GET_CODE_FAILED"
+                    return "EMAIL_VERIFICATION_FAILED"
+                
+                # 在自动获取验证码失败时可能已转为手动输入模式
+                if not is_custom_email_registration and EMAIL_CODE_TYPE != "INPUT":
+                    info(f"成功获取到验证码: {code}，继续注册流程")
+                else:
+                    info(f"通过手动输入获取到验证码: {code}，继续注册流程")
+                
                 info(f"输入验证码: {code}")
                 i = 0
                 for digit in code:
@@ -329,9 +364,9 @@ class EmailGenerator:
         domain = random.choice(self.domains)
         return f"{random_str}@{domain}"
 
-    def get_account_info(self):
-        """获取账号信息，确保每次调用都生成新的邮箱和密码"""
-        self.email = self.generate_email()
+    def get_account_info(self, email=None):
+        """获取账号信息，确保每次调用都生成新的邮箱和密码，或使用提供的邮箱"""
+        self.email = email if email else self.generate_email()
         self.password = self.generate_random_password()
         return {
             "email": self.email,
@@ -417,19 +452,31 @@ def cleanup_and_exit(browser_manager=None, exit_code=0):
         sys.exit(1)
 
 
-def main():
+def main(custom_email=None):
     browser_manager = None
     max_retries = REGISTRATION_MAX_RETRIES  # 从配置文件获取
     current_retry = 0
+    
+    # 先声明全局变量并保存原始值
+    global EMAIL_CODE_TYPE
+    original_email_code_type = EMAIL_CODE_TYPE
 
     try:
-        email_handler = EmailVerificationHandler()
+        # 如果使用自定义邮箱，切换验证码获取模式为手动输入
+        if custom_email:
+            info(f"使用自定义邮箱注册场景 {custom_email}，切换为手动输入验证码模式")
+            EMAIL_CODE_TYPE = "INPUT"
+        else:
+            info(f"使用任务注册场景，使用配置的验证码获取方式: {EMAIL_CODE_TYPE}")
+        
+        # 初始化邮箱验证处理器时传入自定义邮箱
+        email_handler = EmailVerificationHandler(custom_email=custom_email)
         if email_handler.check():
             info('邮箱服务连接正常，开始注册!')
         else:
-            if EMAIL_CODE_TYPE == "API":
+            if EMAIL_CODE_TYPE == "API" and not custom_email:
                 error('邮箱服务连接失败，并且验证码为API获取，结束注册!')
-                return
+                return False
             else:
                 info('邮箱服务连接失败，并且验证码为手动输入，等待输入验证码...')
 
@@ -438,9 +485,17 @@ def main():
         browser = browser_manager.init_browser()
         while current_retry < max_retries:
             try:
-                account_info = email_generator.get_account_info()
+                # 使用自定义邮箱或生成新邮箱
+                account_info = email_generator.get_account_info(email=custom_email)
+                
+                # 标记是否为自定义邮箱注册场景
+                if custom_email:
+                    account_info["is_custom_registration"] = True
+                else:
+                    account_info["is_custom_registration"] = False
+                
                 info(
-                    f"初始化账号信息成功 => 邮箱: {account_info['email']}, 用户名: {account_info['first_name']}, 密码: {account_info['password']}"
+                    f"初始化账号信息成功 => 邮箱: {account_info['email']}, 用户名: {account_info['first_name']}, 密码: {account_info['password']}, 场景: {'自定义邮箱' if account_info['is_custom_registration'] else '任务注册'}"
                 )
 
                 signup_tab = browser.new_tab(LOGIN_URL)
@@ -455,7 +510,10 @@ def main():
                     if token:
                         email_generator._save_account_info(user, token, TOTAL_USAGE)
                         info("注册流程完成")
-                        cleanup_and_exit(browser_manager, 0)
+                        # 关闭资源但不退出程序，只返回成功状态
+                        if browser_manager and hasattr(browser_manager, "browser"):
+                            browser_manager.browser.quit()
+                        return True
                     else:
                         info("获取Cursor会话Token失败")
                         current_retry += 1
@@ -487,9 +545,19 @@ def main():
                     pass
 
         info(f"达到最大重试次数 {max_retries}，注册失败")
+        return False
     except Exception as e:
         info(f"主程序错误: {str(e)}")
         info(f"错误详情: {traceback.format_exc()}")
-        cleanup_and_exit(browser_manager, 1)
+        return False
     finally:
-        cleanup_and_exit(browser_manager, 1)
+        # 恢复原始的EMAIL_CODE_TYPE
+        EMAIL_CODE_TYPE = original_email_code_type
+        
+        # 清理资源
+        if browser_manager:
+            try:
+                if hasattr(browser_manager, "browser"):
+                    browser_manager.browser.quit()
+            except Exception as e:
+                error(f"关闭浏览器时发生错误: {str(e)}")
