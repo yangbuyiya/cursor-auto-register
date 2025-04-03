@@ -2447,22 +2447,6 @@ function bindModalEvents() {
       // 延迟调用清理，避免与Bootstrap自身的处理冲突
       setTimeout(() => cleanupModalBackdrops(), 50);
     });
-
-  // 监听复制Token按钮 - 使用节流处理
-  $('#copyTokenBtn')
-    .off('click')
-    .on(
-      'click',
-      throttle(function () {
-        const token = $('#tokenFullText').val();
-        if (token) {
-          copyToClipboard(token);
-          showAlert('Token已复制到剪贴板', 'success');
-        } else {
-          showAlert('没有Token可复制', 'warning');
-        }
-      }, 300)
-    );
 }
 
 // 验证码请求检查
